@@ -1,0 +1,21 @@
+# Byte-compiled / Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Environment variables & secrets (Security Risk)
+.env
+*.env
+
+# Local ML Models (Heavy Files)
+fastapi-chatbot/local_models/
+local_models/
+
+# Datasets (PDFs are heavy - Optional)
+data/
+
+# OS / Editor Files
+desktop.ini
+.vscode/
+.idea/

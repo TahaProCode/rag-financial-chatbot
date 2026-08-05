@@ -1,0 +1,7 @@
+Chat bot Ai with Rag 
+
+1. Type of Data : SEC financial filings (10-K annual reports, 10-Q quarterly reports, 8-K, and earnings presentations) for 4 companies — Amazon, Apple, Google, and Meta.
+
+This is genuinely a great, well-scoped RAG use case.
+
+2. Loaded the pdfs in the pdf Loader via PyMuPDFLoader

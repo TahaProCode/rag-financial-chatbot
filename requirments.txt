@@ -1,0 +1,10 @@
+jupyter
+ipykernel
+langchain
+langchain-community
+pymupdf
+sentence-transformers
+psycopg2-binary
+pgvector
+numpy
+python-dotenv

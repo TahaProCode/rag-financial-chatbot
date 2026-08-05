@@ -1,0 +1,149 @@
+"""
+CRUD (Create, Read, Update, Delete) functions for chat_sessions and
+chat_messages. Kept separate from the FastAPI routes (main.py) so the
+raw SQL is in one place and easy to test/reuse.
+"""
+from typing import Optional
+from .database import get_conn
+
+
+# -------- Chat Sessions ---------
+
+def create_session(title: str = "New chat") -> dict:
+    with get_conn() as conn:
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO chat_sessions (title)
+                   VALUES (%s)
+                   RETURNING id, title, created_at, updated_at;""",
+                (title,),
+            )
+            row = cur.fetchone()
+    return _session_row_to_dict(row)
+
+
+def list_sessions() -> list[dict]:
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT id, title, created_at, updated_at
+                   FROM chat_sessions
+                   ORDER BY updated_at DESC;"""
+            )
+            rows = cur.fetchall()
+    return [_session_row_to_dict(r) for r in rows]
+
+
+def get_session(session_id: int) -> Optional[dict]:
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT id, title, created_at, updated_at
+                   FROM chat_sessions WHERE id = %s;""",
+                (session_id,),
+            )
+            row = cur.fetchone()
+    return _session_row_to_dict(row) if row else None
+
+
+def update_session_title(session_id: int, title: str) -> Optional[dict]:
+    with get_conn() as conn:
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute(
+                """UPDATE chat_sessions
+                   SET title = %s, updated_at = NOW()
+                   WHERE id = %s
+                   RETURNING id, title, created_at, updated_at;""",
+                (title, session_id),
+            )
+            row = cur.fetchone()
+    return _session_row_to_dict(row) if row else None
+
+
+def touch_session(session_id: int) -> None:
+    """Bump updated_at whenever a new message is added, so the sidebar
+    can sort chats by most-recently-active."""
+    with get_conn() as conn:
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE chat_sessions SET updated_at = NOW() WHERE id = %s;",
+                (session_id,),
+            )
+
+
+def delete_session(session_id: int) -> bool:
+    with get_conn() as conn:
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM chat_sessions WHERE id = %s RETURNING id;",
+                (session_id,),
+            )
+            row = cur.fetchone()
+    return row is not None
+
+
+# ---------- Chat Messages ----------
+
+def add_message(session_id: int, role: str, content: str) -> dict:
+    with get_conn() as conn:
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO chat_messages (session_id, role, content)
+                   VALUES (%s, %s, %s)
+                   RETURNING id, session_id, role, content, created_at;""",
+                (session_id, role, content),
+            )
+            row = cur.fetchone()
+    return _message_row_to_dict(row)
+
+
+def list_messages(session_id: int) -> list[dict]:
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT id, session_id, role, content, created_at
+                   FROM chat_messages
+                   WHERE session_id = %s
+                   ORDER BY created_at ASC;""",
+                (session_id,),
+            )
+            rows = cur.fetchall()
+    return [_message_row_to_dict(r) for r in rows]
+
+
+def delete_message(message_id: int) -> bool:
+    with get_conn() as conn:
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM chat_messages WHERE id = %s RETURNING id;",
+                (message_id,),
+            )
+            row = cur.fetchone()
+    return row is not None
+
+
+# ---------- helpers ----------
+
+def _session_row_to_dict(row) -> dict:
+    return {
+        "id": row[0],
+        "title": row[1],
+        "created_at": row[2],
+        "updated_at": row[3],
+    }
+
+
+def _message_row_to_dict(row) -> dict:
+    return {
+        "id": row[0],
+        "session_id": row[1],
+        "role": row[2],
+        "content": row[3],
+        "created_at": row[4],
+    }
