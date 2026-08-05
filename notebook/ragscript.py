@@ -220,7 +220,7 @@ conn.autocommit = True
 cursor = conn.cursor()
 print("Connected to Postgres successfully!")
 
-
+#kkk
 cursor.execute("CREATE EXTENSION IF NOT EXISTS vector;")
 print("Vector extension ready.")
 
