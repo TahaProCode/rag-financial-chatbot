@@ -222,7 +222,7 @@ print("Connected to Postgres successfully!")
 
 #kkk
 cursor.execute("CREATE EXTENSION IF NOT EXISTS vector;")
-print("Vector extension ready.")
+print("Vector extension ready hai.")
 
 
 embedding_dim = embeddings_manager.get_embedding_dimension()  # should print 384
