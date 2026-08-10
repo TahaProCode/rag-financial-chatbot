@@ -204,15 +204,191 @@ embeddings_manager = EmbeddingsManager()
 texts = [chunk.page_content for chunk in chunks]
 embeddings = embeddings_manager.generate_embeddings(texts)
 print(embeddings.shape)  # should be (num_chunks, 384)
+#---------------------------------------- Vision Model LLM
+# import os
+# import re
+# import io
+# import base64
+# from pathlib import Path
+# from typing import List
+# from PIL import Image
+# import fitz  # PyMuPDF
+# import ollama  # Local Vision LLM Engine
 
+# from langchain_core.documents import Document
+# from langchain_huggingface import HuggingFaceEmbeddings
+# from langchain_experimental.text_splitter import SemanticChunker
+# from sentence_transformers import SentenceTransformer
+# import numpy as np
+
+# # 1. Setup Directories
+# data_dir = Path("../data") 
+
+# def normalize_name(filename: str) -> str:
+#     name = filename.lower()
+#     name = re.sub(r"\s*\(\d+\)", "", name)
+#     return name.strip()
+
+# all_pdf_files = []
+# seen_normalized_names = set()
+
+# folders = [f for f in data_dir.iterdir() if f.is_dir()] if data_dir.exists() else []
+# for folder in folders:
+#     for pdf_file in folder.glob("*.pdf"):
+#         norm_name = normalize_name(pdf_file.name)
+#         if norm_name not in seen_normalized_names:
+#             seen_normalized_names.add(norm_name)
+#             all_pdf_files.append(pdf_file)
+
+# print(f"Total unique PDFs to process: {len(all_pdf_files)}")
+
+# # 2. Metadata Parser
+# def parse_filename(filename: str) -> dict:
+#     name = filename.replace(".pdf", "")
+#     parts = name.split("_")
+#     return {
+#         "company": parts[0] if len(parts) > 0 else None,
+#         "filing_type": parts[1] if len(parts) > 1 else None,
+#         "year": parts[2] if len(parts) > 2 else None,
+#         "quarter": parts[3] if len(parts) > 3 else None,
+#     }
+
+# # ---------------------------------------------------------
+# # STEP 2 & 3: Vision LLM via Local Model (Ollama)
+# # ---------------------------------------------------------
+# def analyze_graph_with_vision_llm(pix) -> str:
+#     """
+#     Takes image pixmap of graph/chart page, sends it to local Vision LLM,
+#     and returns detailed text description & Markdown tables.
+#     """
+#     try:
+#         # Convert PyMuPDF Pixmap to Base64
+#         img_bytes = pix.tobytes("png")
+#         base64_img = base64.b64encode(img_bytes).decode('utf-8')
+
+#         prompt = (
+#             "Analyze this document page/graph in detail. "
+#             "1. Extract all numbers, metrics, and labels from charts or tables. "
+#             "2. Describe the trend, high/low points, and main insights shown in visual graphs. "
+#             "3. Present any tabular data as Markdown tables. "
+#             "Provide a factual, highly descriptive text summary suitable for database search retrieval."
+#         )
+
+#         # Local Vision Call (Zero API Costs & Limits)
+#         response = ollama.chat(
+#             model='qwen2.5vl',
+#             messages=[{
+#                   'role': 'user',
+#                   'content': prompt,
+#                   'images': [base64_img]
+#             }]
+#         )
+#         return response['message']['content']
+#     except Exception as e:
+#         print(f" helo Vision LLM processing error: {e}")
+#         return ""
+
+# # ---------------------------------------------------------
+# # STEP 1: Read PDFs & Detect Graphs
+# # ---------------------------------------------------------
+# def load_pdf_multimodal(pdf_file: Path) -> List[Document]:
+#     doc = fitz.open(str(pdf_file))
+#     documents = []
+#     file_metadata = parse_filename(pdf_file.name)
+
+#     for page_idx in range(len(doc)):
+#         page = doc[page_idx]
+#         raw_text = page.get_text("text").strip()
+#         image_list = page.get_images(full=True)
+        
+#         # Detect if page contains charts/images or is visual heavy
+#         has_graph_or_chart = len(image_list) > 0 or len(raw_text) < 150
+
+#         if has_graph_or_chart:
+#             print(f"  📊 Page {page_idx + 1}: Graph/Visual detected. Running Local Vision LLM...")
+#             pix = page.get_pixmap(dpi=300)
+            
+#             # Step 3: Get Text Description from Vision LLM
+#             graph_description = analyze_graph_with_vision_llm(pix)
+            
+#             # Merge PDF text and LLM generated vision summary
+#             combined_content = f"{raw_text}\n\n--- [VISUAL GRAPH DESCRIPTION & TABLES] ---\n{graph_description}"
+#         else:
+#             combined_content = raw_text
+
+#         if combined_content.strip():
+#             metadata = {
+#                 "source": pdf_file.name,
+#                 "source_type": "pdf",
+#                 "page": page_idx + 1,
+#                 "has_visuals": has_graph_or_chart
+#             }
+#             metadata.update(file_metadata)
+#             documents.append(Document(page_content=combined_content, metadata=metadata))
+
+#     doc.close()
+#     return documents
+
+# # ---------------------------------------------------------
+# # STEP 4: Chunking & Text Processing
+# # ---------------------------------------------------------
+# hf_embeddings = HuggingFaceEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+# semantic_splitter = SemanticChunker(
+#     embeddings=hf_embeddings,
+#     breakpoint_threshold_type="percentile",
+#     breakpoint_threshold_amount=95
+# )
+
+# def process_all_pdfs(pdf_files):
+#     all_chunks = []
+#     for pdf_file in pdf_files:
+#         print(f"\n📁 Processing File: {pdf_file.name}")
+#         try:
+#             documents = load_pdf_multimodal(pdf_file)
+#             if documents:
+#                 chunks = semantic_splitter.split_documents(documents)
+#                 all_chunks.extend(chunks)
+#         except Exception as e:
+#             print(f"Error processing {pdf_file.name}: {e}")
+
+#     print(f"\n✅ Total Chunks Generated (Text + Vision Summaries): {len(all_chunks)}")
+#     return all_chunks
+
+# chunks = process_all_pdfs(all_pdf_files)
+
+# # ---------------------------------------------------------
+# # STEP 4 & 5: Generate Embeddings & Prep for DB Storage
+# # ---------------------------------------------------------
+# class EmbeddingsManager:
+#     def __init__(self, model_name: str = "BAAI/bge-small-en-v1.5"):
+#         self.model = SentenceTransformer(model_name)
+
+#     def generate_embeddings(self, texts: List[str]) -> np.ndarray:
+#         print(f"\n🧠 Generating Embeddings for {len(texts)} chunks...")
+#         return self.model.encode(texts, show_progress_bar=True)
+
+# embeddings_manager = EmbeddingsManager()
+
+# if chunks:
+#     # Sub-Step: Extracts graph descriptions + text combined chunks
+#     texts = [chunk.page_content for chunk in chunks]
+    
+#     # Generate vectors for all content (Standard Text + Vision LLM outputs)
+#     embeddings = embeddings_manager.generate_embeddings(texts)
+    
+#     print(f"🚀 Final Embeddings Vector Shape: {embeddings.shape}")
+#     print("✨ Ready for Database Storage (Vector + Metadata + Page Content)!")
+
+import hashlib
 import psycopg2
+from psycopg2.extras import execute_values
 
 DB_CONFIG = {
     "host": "localhost",
     "port": 5432,
     "dbname": "rag_chatbot",
     "user": "postgres",
-    "password": "taha123" 
+    "password": "taha123",
 }
 
 conn = psycopg2.connect(**DB_CONFIG)
@@ -220,12 +396,16 @@ conn.autocommit = True
 cursor = conn.cursor()
 print("Connected to Postgres successfully!")
 
-#kkk
+# Ensure pgvector extension
 cursor.execute("CREATE EXTENSION IF NOT EXISTS vector;")
 print("Vector extension ready hai.")
 
+# Get dimension safely from generated numpy array
+if len(embeddings) > 0:
+    embedding_dim = embeddings.shape[1]  # 384
+else:
+    embedding_dim = 384  # Default fallback for BAAI/bge-small-en-v1.5
 
-embedding_dim = embeddings_manager.get_embedding_dimension()  # should print 384
 print(f"Embedding dimension: {embedding_dim}")
 
 create_table_query = f"""
@@ -245,10 +425,6 @@ CREATE TABLE IF NOT EXISTS document_chunks (
 cursor.execute(create_table_query)
 print("Table ready.")
 
-
-from psycopg2.extras import execute_values
-import uuid
-
 insert_query = """
 INSERT INTO document_chunks 
 (chunk_id, content, company, filing_type, quarter, year, period, source, embedding)
@@ -258,25 +434,31 @@ ON CONFLICT (chunk_id) DO NOTHING;
 
 rows_to_insert = []
 for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
-    chunk_id = f"chunk_{uuid.uuid4().hex[:8]}_{i}"
     meta = chunk.metadata
+    source_name = meta.get("source", "doc")
 
-    rows_to_insert.append((
-        chunk_id,
-        chunk.page_content,
-        meta.get("company"),
-        meta.get("filing_type"),
-        meta.get("quarter"),
-        meta.get("year"),
-        meta.get("period"),
-        meta.get("source"),
-        embedding.tolist()
-    ))
+    # Unique deterministic ID base par duplicate control
+    chunk_hash = hashlib.md5(f"{source_name}_{i}_{chunk.page_content[:30]}".encode()).hexdigest()
+    chunk_id = f"chunk_{chunk_hash[:12]}"
+
+    rows_to_insert.append(
+        (
+            chunk_id,
+            chunk.page_content,
+            meta.get("company"),
+            meta.get("filing_type"),
+            meta.get("quarter"),
+            meta.get("year"),
+            meta.get("period"),
+            source_name,
+            embedding.tolist(),
+        )
+    )
 
 execute_values(cursor, insert_query, rows_to_insert)
-print(f"Inserted {len(rows_to_insert)} chunks into Postgres.")
+print(f"Inserted/Processed {len(rows_to_insert)} chunks into Postgres.")
 
-# %%
+# Verification queries
 cursor.execute("SELECT COUNT(*) FROM document_chunks;")
 print("Total rows in table:", cursor.fetchone()[0])
 
