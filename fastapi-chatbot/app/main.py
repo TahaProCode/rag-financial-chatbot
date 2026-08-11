@@ -74,7 +74,8 @@ async def lifespan(app: FastAPI):
     app.state.chat_graph = chat_graph_builder.compile(checkpointer=checkpointer, store=store)
     app.state.checkpointer_cm = _checkpointer_cm
     app.state.store_cm = _store_cm
-    
+    app.state.chat_graph = chat_graph_builder.compile(checkpointer=checkpointer, store=store)
+    app.state.store = store  # <-- Yeh line add karein
     print("Chat graph with Long-Term Memory Store loaded successfully.")
     yield
 
@@ -196,19 +197,30 @@ def send_message(chat_id: int, payload: schemas.SendMessageRequest):
 
 @app.delete("/api/chats/{chat_id}", status_code=204)
 def delete_chat(chat_id: int):
-    """Delete a chat session and all its messages (ON DELETE CASCADE)."""
+    """Delete a chat session, its messages, and clear its long-term store memory."""
     deleted = crud.delete_session(chat_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Chat not found")
     
     chat_graph = getattr(app.state, "chat_graph", None)
-    # Checkpointer thread state logic safe execution
+    
+    # 1. Clear Checkpointer Thread History (Short-term)
     if chat_graph and getattr(chat_graph, "checkpointer", None):
         try:
             chat_graph.checkpointer.delete_thread(str(chat_id))
-        except AttributeError:
-            # Fallback if specific driver structure varies
-            pass
+        except Exception as e:
+            print(f"Checkpointer thread delete error: {e}")
+
+    # 2. Clear Long-Term Memory Store for this thread / user
+    if chat_graph and getattr(chat_graph, "store", None):
+        try:
+            # Agar aap thread-wise memory rakh rahe hain
+            chat_graph.store.delete((f"user_profile_{chat_id}",), "profile_data")
+            
+            # Agar aap global memory saaf karna chahte hain jab koi chat delete ho
+            chat_graph.store.delete(("user_profile",), "profile_data")
+        except Exception as e:
+            print(f"Store memory delete error: {e}")
 
 # def delete_message(message_id: int):
 #     deleted = crud.delete_message(message_id)
