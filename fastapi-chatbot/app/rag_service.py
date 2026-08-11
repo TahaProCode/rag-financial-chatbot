@@ -15,6 +15,13 @@ from .database import get_conn
 OLLAMA_MODEL = "qwen3:4b"
 LOCAL_MODEL_PATH = "./local_models/all-MiniLM-L6-v2"
 
+# Below this similarity score, retrieved chunks are considered irrelevant
+SIMILARITY_THRESHOLD = 0.35
+
+NOT_ENOUGH_INFO_REPLY = (
+    "Your query doesn't have enough information. "
+    "Please provide me some more details (e.g. company name, filing type, quarter/year)."
+)
 # Patterns for greetings / small talk
 _SMALL_TALK_PATTERNS = [
     r"^\s*(hi|hello|hey|yo|hola|greetings)\b",
@@ -70,7 +77,37 @@ Always use these updated facts when answering questions about the user's name or
     )
     return response["message"]["content"]
 
+def is_ambiguous_query(query: str, model: str = OLLAMA_MODEL) -> bool:
+    """
+    LLM-based check: is the query too vague/incomplete to be answered
+    meaningfully from SEC filing data (missing company, period, metric, etc.)?
+    """
+    system_prompt = """You are a query classifier for a financial SEC-filings RAG chatbot.
+Decide if the user's question is AMBIGUOUS or CLEAR.
 
+AMBIGUOUS = missing key details needed to search filings, e.g. no company name,
+no time period, or the question is too vague/generic to look anything up
+(e.g. "what was the revenue?", "how did they do?", "tell me about the filing").
+
+CLEAR = specific enough to search for, even if short (e.g. "Tesla Q2 2023 revenue",
+"Apple's net income in FY2022").
+
+Respond with ONLY one word: "AMBIGUOUS" or "CLEAR"."""
+
+    try:
+        response = ollama.chat(
+            model=model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": query},
+            ],
+            options={"temperature": 0.0},
+        )
+        verdict = response["message"]["content"].strip().upper()
+        return "AMBIGUOUS" in verdict
+    except Exception as e:
+        print(f"Error classifying query ambiguity: {e}")
+        return False  # fail-open: classifier fail ho to user ko block na karein
 class EmbeddingsManager:
     def __init__(self, model_path: str = LOCAL_MODEL_PATH):
         self.model_path = model_path
@@ -137,31 +174,63 @@ class RAGRetriever:
 
 def generate_answer(query: str, retrieved_docs: List[Dict[str, Any]], model: str = OLLAMA_MODEL) -> str:
     if not retrieved_docs:
-        return "I couldn't find relevant information to answer that question."
+        return NOT_ENOUGH_INFO_REPLY
 
+    best_score = max((doc.get("similarity_score") or 0) for doc in retrieved_docs)
+    if best_score < SIMILARITY_THRESHOLD:
+        return NOT_ENOUGH_INFO_REPLY
+
+    # Number each unique source so the model can cite it like [1], [2] ...
     context_parts = []
+    citation_list = []
+    seen = {}
+    counter = 1
+
     for doc in retrieved_docs:
         meta = doc["metadata"]
-        company = (meta.get("company") or "unknown").upper()
-        filing_type = (meta.get("filing_type") or "unknown").upper()
-        period = meta.get("period") or "unknown period"
-        source_info = f"[{company} {filing_type} - {period}]"
-        context_parts.append(f"{source_info}\n{doc['content']}")
+        company = (meta.get("company") or "Unknown").upper()
+        filing_type = (meta.get("filing_type") or "Unknown").upper()
+        period = meta.get("period") or "Unknown period"
+        source = meta.get("source") or ""
+        key = (company, filing_type, period, source)
 
-    context = "\n\n---\n\n".join(context_parts)
+        if key not in seen:
+            seen[key] = counter
+            label = f"{company} {filing_type} ({period})"
+            if source:
+                label += f" — {source}"
+            citation_list.append(f"[{counter}] {label}")
+            counter += 1
 
-    system_prompt = """You are a financial analyst assistant. Answer the user's question
-using ONLY the provided context from SEC filings. If the context doesn't contain enough
-information to answer, say so clearly. Always cite which company/filing/period your
-answer is based on."""
+        num = seen[key]
+        context_parts.append(f"[{num}] {doc['content']}")
 
-    user_prompt = f"""Context from SEC filings:
+    context = "\n\n".join(context_parts)
+    references = "\n".join(citation_list)
 
+    system_prompt = """You are a financial analyst assistant. Answer the user's question using
+ONLY the provided numbered context. Cite sources inline using square brackets like [1], [2],
+exactly like a scientific paper — every factual claim must have an inline citation number
+pointing to the context chunk it came from. Do NOT write a references or sources section
+yourself, it will be added automatically after your answer.
+
+Example:
+
+Context:
+[1] Apple's total revenue for fiscal year 2022 was $394.3 billion, an increase of 8% year-over-year.
+[2] Apple's net income for fiscal year 2022 was $99.8 billion.
+
+Question: What were Apple's revenue and net income in FY2022?
+
+Answer:
+Apple's total revenue for FY2022 was $394.3 billion, up 8% year-over-year [1]. Net income for the same period was $99.8 billion [2]."""
+
+    user_prompt = f"""Context:
 {context}
 
 Question: {query}
 
-Answer based only on the context above:"""
+Answer (use inline [n] citations, do not add a references section):"""
 
     response = ollama.chat(
         model=model,
@@ -171,8 +240,9 @@ Answer based only on the context above:"""
         ],
         options={"temperature": 0.2},
     )
-    return response["message"]["content"]
+    answer_text = response["message"]["content"]
 
+    return f"{answer_text}\n\n**References:**\n{references}"
 
 class RAGService:
     """Single entrypoint the API layer calls: query in, answer out."""
@@ -183,6 +253,8 @@ class RAGService:
     def answer(self, query: str, top_k: int = 5) -> str:
         if is_small_talk(query):
             return generate_small_talk_reply(query)
+        if is_ambiguous_query(query):
+            return NOT_ENOUGH_INFO_REPLY
         docs = self.retriever.retrieve(query, top_k=top_k)
         return generate_answer(query, docs)
 
