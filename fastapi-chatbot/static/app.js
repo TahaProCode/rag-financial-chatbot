@@ -169,7 +169,12 @@ function buildMessageRow(role, content, isLoading = false) {
     role === "user" ? CONTENT_USER_BUBBLE : CONTENT_ASSISTANT_RULE;
   contentEl.className =
     `${CONTENT_BASE} ${roleClass}` + (isLoading ? ` ${CONTENT_LOADING}` : "");
-  contentEl.textContent = content;
+
+  if (role === "user") {
+    contentEl.textContent = content;
+  } else {
+    contentEl.innerHTML = marked.parse(content || "");
+  }
 
   inner.append(avatar, contentEl);
   row.appendChild(inner);

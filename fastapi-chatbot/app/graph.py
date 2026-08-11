@@ -52,13 +52,17 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.store.base import BaseStore
 
 from . import rag_service as rag_service_module
-from .rag_service import is_small_talk, generate_small_talk_reply, generate_answer, OLLAMA_MODEL
+from .rag_service import (
+    is_small_talk, generate_small_talk_reply, generate_answer, OLLAMA_MODEL,
+    is_ambiguous_query, NOT_ENOUGH_INFO_REPLY,
+)
 
 
 class ChatState(TypedDict):
     messages: Annotated[list, add_messages]
     top_k: int
     retrieved_docs: Optional[list]
+    is_ambiguous: Optional[bool]
 
 
 # Helper to detect personal queries or memory clear requests
@@ -82,6 +86,10 @@ def is_memory_clear_request(text: str) -> bool:
 def extract_memory_node(state: ChatState, config: RunnableConfig = None, store: BaseStore = None) -> dict:
     if not store:
         return {}
+
+    # Thread ID extracted from RunnableConfig
+    thread_id = config.get("configurable", {}).get("thread_id", "global")
+    namespace = (f"user_profile_{thread_id}",)  # Thread specific memory namespace
 
     last_user_msg = state["messages"][-1].content
     if is_small_talk(last_user_msg) or is_personal_question(last_user_msg) or is_memory_clear_request(last_user_msg):
@@ -116,13 +124,13 @@ CRITICAL: Return ONLY valid raw JSON. Do not include markdown formatting or extr
             extracted_facts = json.loads(clean_json_str)
 
             if extracted_facts:
-                existing_item = store.get(("user_profile",), "profile_data")
+                existing_item = store.get(namespace, "profile_data")
                 existing_facts = existing_item.value if existing_item and existing_item.value else {}
 
-                # Merge any new facts into dynamic dictionary
+                # Merge any new facts
                 existing_facts.update(extracted_facts)
-                store.put(("user_profile",), "profile_data", existing_facts)
-                print(f"Permanent Memory Updated: {existing_facts}")
+                store.put(namespace, "profile_data", existing_facts)
+                print(f"Memory Updated for thread {thread_id}: {existing_facts}")
 
     except Exception as e:
         print(f"Error extracting memory: {e}")
@@ -131,24 +139,36 @@ CRITICAL: Return ONLY valid raw JSON. Do not include markdown formatting or extr
 
 
 # --- 2. RETRIEVE NODE ---
+# --- 2. RETRIEVE NODE ---
 def retrieve_node(state: ChatState, config: RunnableConfig = None) -> dict:
     last_user_msg = state["messages"][-1].content
-    
+
     if is_small_talk(last_user_msg) or is_personal_question(last_user_msg) or is_memory_clear_request(last_user_msg):
         return {"retrieved_docs": []}
-    
+
+    # Retrieval se pehle hi ambiguous query check karein
+    if is_ambiguous_query(last_user_msg):
+        return {"retrieved_docs": [], "is_ambiguous": True}
+
     tk = state.get("top_k") or 5
     docs = rag_service_module.rag_service.retriever.retrieve(last_user_msg, top_k=tk)
-    return {"retrieved_docs": docs}
 
+    # Query clear thi lekin vector store mein relevant data nahi mila
+    best_score = max((d.get("similarity_score") or 0) for d in docs) if docs else 0
+    if best_score < rag_service_module.SIMILARITY_THRESHOLD:
+        return {"retrieved_docs": docs, "is_ambiguous": True}
+
+    return {"retrieved_docs": docs, "is_ambiguous": False}
 
 # --- 3. GENERATE NODE ---
 def generate_node(state: ChatState, config: RunnableConfig = None, store: BaseStore = None) -> dict:
     user_profile_data = {}
-    
+    thread_id = config.get("configurable", {}).get("thread_id", "global") if config else "global"
+    namespace = (f"user_profile_{thread_id}",)
+
     if store:
         try:
-            mem_item = store.get(("user_profile",), "profile_data")
+            mem_item = store.get(namespace, "profile_data")
             if mem_item and mem_item.value:
                 user_profile_data = mem_item.value
         except Exception as e:
@@ -156,19 +176,19 @@ def generate_node(state: ChatState, config: RunnableConfig = None, store: BaseSt
 
     last_user_msg = state["messages"][-1].content
 
-    # A. MEMORY DELETE REQUEST (Jab chat delete/reset karni ho)
+    # A. MEMORY DELETE REQUEST
     if is_memory_clear_request(last_user_msg):
         if store:
             try:
-                store.delete(("user_profile",), "profile_data")
-                reply = "I have cleared all stored facts about you from my memory."
+                store.delete(namespace, "profile_data")
+                reply = "I have cleared all stored facts about you from this chat's memory."
             except Exception as e:
                 reply = f"Error clearing memory: {e}"
         else:
             reply = "No active memory store found to clear."
         return {"messages": [AIMessage(content=reply)]}
 
-    # B. DYNAMIC PERSONAL QUESTION RESPONSE (Works for ANY extracted field)
+    # B. DYNAMIC PERSONAL QUESTION RESPONSE
     if is_personal_question(last_user_msg):
         if user_profile_data:
             formatted_details = []
@@ -177,19 +197,22 @@ def generate_node(state: ChatState, config: RunnableConfig = None, store: BaseSt
                 formatted_details.append(f"• **{key_clean}**: {v}")
             
             details_str = "\n".join(formatted_details)
-            reply = f"Here is what I remember about you:\n{details_str}\n\nHow can I help you today?"
+            reply = f"Here is what I remember about you in this session:\n{details_str}\n\nHow can I help you today?"
         else:
-            reply = "You haven't shared any details with me yet! What would you like me to remember?"
+            reply = "You haven't shared any details with me in this chat yet! What would you like me to remember?"
             
         return {"messages": [AIMessage(content=reply)]}
 
-    # C. NORMAL RAG & SMALL TALK FLOW
+    # C. AMBIGUOUS QUERY / NO RELEVANT DATA IN VECTOR STORE
+    if state.get("is_ambiguous"):
+        return {"messages": [AIMessage(content=NOT_ENOUGH_INFO_REPLY)]}
+
+    # D. NORMAL RAG & SMALL TALK FLOW
     if user_profile_data:
         profile_str = f"[User Profile Context: {json.dumps(user_profile_data)}]\n"
+        full_prompt = profile_str + last_user_msg
     else:
-        profile_str = ""
-
-    full_prompt = profile_str + last_user_msg
+        full_prompt = last_user_msg
 
     if is_small_talk(last_user_msg):
         reply = generate_small_talk_reply(full_prompt)
