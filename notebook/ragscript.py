@@ -204,6 +204,7 @@ embeddings_manager = EmbeddingsManager()
 texts = [chunk.page_content for chunk in chunks]
 embeddings = embeddings_manager.generate_embeddings(texts)
 print(embeddings.shape)  # should be (num_chunks, 384)
+
 #---------------------------------------- Vision Model LLM
 # import os
 # import re
