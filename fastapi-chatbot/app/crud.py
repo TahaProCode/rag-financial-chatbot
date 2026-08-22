@@ -9,54 +9,56 @@ from .database import get_conn
 
 # -------- Chat Sessions ---------
 
-def create_session(title: str = "New chat") -> dict:
+def create_session(title: str = "New chat" , user_id : int = None) -> dict:
     with get_conn() as conn:
         conn.autocommit = True
         with conn.cursor() as cur:
             cur.execute(
-                """INSERT INTO chat_sessions (title)
-                   VALUES (%s)
+                """INSERT INTO chat_sessions (title , user_id)
+                   VALUES (%s,%s)
                    RETURNING id, title, created_at, updated_at;""",
-                (title,),
+                (title, user_id),
             )
             row = cur.fetchone()
     return _session_row_to_dict(row)
 
 
-def list_sessions() -> list[dict]:
+def list_sessions(user_id:int) -> list[dict]:
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT id, title, created_at, updated_at
                    FROM chat_sessions
-                   ORDER BY updated_at DESC;"""
+                   WHERE user_id = %s
+                   ORDER BY updated_at DESC;""",
+                   (user_id,),
             )
             rows = cur.fetchall()
     return [_session_row_to_dict(r) for r in rows]
 
 
-def get_session(session_id: int) -> Optional[dict]:
+def get_session(session_id: int , user_id:int) -> Optional[dict]:
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT id, title, created_at, updated_at
-                   FROM chat_sessions WHERE id = %s;""",
-                (session_id,),
+                   FROM chat_sessions WHERE id = %s AND user_id = %s;""",
+                (session_id,user_id)
             )
             row = cur.fetchone()
     return _session_row_to_dict(row) if row else None
 
 
-def update_session_title(session_id: int, title: str) -> Optional[dict]:
+def update_session_title(session_id: int, title: str , user_id:int) -> Optional[dict]:
     with get_conn() as conn:
         conn.autocommit = True
         with conn.cursor() as cur:
             cur.execute(
                 """UPDATE chat_sessions
                    SET title = %s, updated_at = NOW()
-                   WHERE id = %s
+                   WHERE id = %s AND user_id = %s
                    RETURNING id, title, created_at, updated_at;""",
-                (title, session_id),
+                (title, session_id , user_id),
             )
             row = cur.fetchone()
     return _session_row_to_dict(row) if row else None
@@ -74,13 +76,13 @@ def touch_session(session_id: int) -> None:
             )
 
 
-def delete_session(session_id: int) -> bool:
+def delete_session(session_id: int , user_id:int) -> bool:
     with get_conn() as conn:
         conn.autocommit = True
         with conn.cursor() as cur:
             cur.execute(
                 "DELETE FROM chat_sessions WHERE id = %s RETURNING id;",
-                (session_id,),
+                (session_id,user_id),
             )
             row = cur.fetchone()
     return row is not None
@@ -121,7 +123,7 @@ def delete_message(message_id: int) -> bool:
         conn.autocommit = True
         with conn.cursor() as cur:
             cur.execute(
-                "DELETE FROM chat_messages WHERE id = %s RETURNING id;",
+                "DELETE FROM chat_sessions WHERE id = %s AND user_id = %s RETURNING id;",
                 (message_id,),
             )
             row = cur.fetchone()

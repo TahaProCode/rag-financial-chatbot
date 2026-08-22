@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login — RAG Chatbot</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  </head>
+  <body
+    class="bg-[#131314] text-[#e3e3e3] font-sans antialiased h-screen flex items-center justify-center"
+  >
+    <div
+      class="w-full max-w-sm bg-[#1e1f20] p-8 rounded-2xl border border-[#37393b]"
+    >
+      <h1 class="text-xl font-semibold mb-1" id="formTitle">Log in</h1>
+      <p class="text-sm text-[#9e9e9e] mb-6">Financial RAG Chatbot</p>
+
+      <form id="authForm" class="flex flex-col gap-4">
+        <!-- NAYA FIELD: Username (Signup ke waqt hi visible hoga) -->
+        <input
+          type="text"
+          id="username"
+          placeholder="Username"
+          class="bg-[#131314] border border-[#37393b] rounded-lg px-4 py-2.5 text-sm outline-none focus:border-[#4285f4]"
+        />
+
+        <input
+          type="email"
+          id="email"
+          placeholder="Email"
+          required
+          class="bg-[#131314] border border-[#37393b] rounded-lg px-4 py-2.5 text-sm outline-none focus:border-[#4285f4]"
+        />
+
+        <input
+          type="password"
+          id="password"
+          placeholder="Password"
+          required
+          minlength="6"
+          class="bg-[#131314] border border-[#37393b] rounded-lg px-4 py-2.5 text-sm outline-none focus:border-[#4285f4]"
+        />
+
+        <p id="errorMsg" class="text-red-400 text-sm hidden"></p>
+
+        <button
+          type="submit"
+          id="submitBtn"
+          class="bg-[#4285f4] hover:bg-[#5a95f5] text-white rounded-lg py-2.5 text-sm font-medium transition-colors"
+        >
+          Log in
+        </button>
+      </form>
+
+      <p class="text-sm text-[#9e9e9e] mt-4 text-center">
+        <span id="toggleText">Don't have an account?</span>
+        <button id="toggleModeBtn" class="text-[#4285f4] hover:underline">
+          Sign up
+        </button>
+      </p>
+    </div>
+
+    <script src="/static/login.js"></script>
+  </body>
+</html>

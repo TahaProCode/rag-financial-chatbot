@@ -1,5 +1,28 @@
-const API = "/api";
+// --- AUTH GUARD: redirect to login if no token ---
+const token = localStorage.getItem("access_token");
+if (!token) {
+  window.location.href = "/static/login.html";
+  throw new Error("No access token found. Halting execution for redirect.");
+}
 
+// --- Helper: fetch wrapper that always attaches the auth token ---
+async function authFetch(url, options = {}) {
+  const headers = {
+    ...(options.headers || {}),
+    Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+  };
+  const res = await fetch(url, { ...options, headers });
+
+  if (res.status === 401) {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("user_email");
+    window.location.href = "/static/login.html";
+    throw new Error("Session expired, redirecting to login.");
+  }
+  return res;
+}
+
+const API = "/api";
 let currentChatId = null;
 let chats = [];
 
@@ -14,13 +37,13 @@ const sendBtn = document.getElementById("sendBtn");
 // ---------- API calls ----------
 
 async function fetchChats() {
-  const res = await fetch(`${API}/chats`);
+  const res = await authFetch(`${API}/chats`);
   chats = await res.json();
   renderChatList();
 }
 
 async function createChat() {
-  const res = await fetch(`${API}/chats`, {
+  const res = await authFetch(`${API}/chats`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title: "New chat" }),
@@ -30,23 +53,21 @@ async function createChat() {
   renderChatList();
   openChat(chat.id);
 }
-// Nayi chat banane ke liye yeh server ko POST request bhejta hai jiska default title "New chat" hota hai.
-// Jab server nayi chat bana deta hai, toh chats.unshift(chat) ke zariye use list me sab se upar (shuru me) add kar diya
-// jata hai. Phir screen update hoti hai aur woh chat automatically openChat() ke zariye khul jati hai
+
 async function openChat(chatId) {
   currentChatId = chatId;
   localStorage.setItem("lastChatId", chatId);
   renderChatList();
   try {
-    const res = await fetch(`${API}/chats/${chatId}`);
+    const res = await authFetch(`${API}/chats/${chatId}`);
     const chat = await res.json();
-    console.log("Fetched Chat Data on Refresh:", chat); // <--- Yeh log lagayein aur Browser Console check karein
     chatTitleEl.textContent = chat.title;
     renderMessages(chat.messages || []);
   } catch (error) {
     console.error("Error fetching chat history:", error);
   }
 }
+
 function renderMessages(messages) {
   messagesEl.innerHTML = "";
   if (!messages.length) {
@@ -54,14 +75,14 @@ function renderMessages(messages) {
     return;
   }
   for (const msg of messages) {
-    // .row lagane se sirf HTML div element append hoga
     const messageRowObj = buildMessageRow(msg.role, msg.content);
     messagesEl.appendChild(messageRowObj.row);
   }
   scrollToBottom();
 }
+
 async function renameChat(chatId, title) {
-  await fetch(`${API}/chats/${chatId}`, {
+  await authFetch(`${API}/chats/${chatId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title }),
@@ -70,7 +91,7 @@ async function renameChat(chatId, title) {
 }
 
 async function deleteChat(chatId) {
-  await fetch(`${API}/chats/${chatId}`, { method: "DELETE" });
+  await authFetch(`${API}/chats/${chatId}`, { method: "DELETE" });
   if (currentChatId === chatId) {
     currentChatId = null;
     localStorage.removeItem("lastChatId");
@@ -82,7 +103,7 @@ async function deleteChat(chatId) {
 }
 
 async function sendMessage(content) {
-  const res = await fetch(`${API}/chats/${currentChatId}/messages`, {
+  const res = await authFetch(`${API}/chats/${currentChatId}/messages`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content, top_k: 5 }),
@@ -90,7 +111,17 @@ async function sendMessage(content) {
   if (!res.ok) throw new Error("Failed to send message");
   return res.json();
 }
+document.addEventListener("DOMContentLoaded", () => {
+  // LocalStorage se user email ya username fetch karein (jo login par save hua tha)
+  const userEmail = localStorage.getItem("user_email") || "User";
 
+  const avatarElement = document.getElementById("userAvatar");
+  if (avatarElement && userEmail) {
+    // Email/Name ka pehla character nikal kar uppercase karein (e.g. taha@gmail.com -> T)
+    const initial = userEmail.charAt(0).toUpperCase();
+    avatarElement.textContent = initial;
+  }
+});
 // ---------- Rendering ----------
 
 const CHAT_ITEM_BASE =
@@ -202,12 +233,10 @@ composerEl.addEventListener("submit", async (e) => {
 
   if (messagesEl.contains(emptyStateEl)) messagesEl.innerHTML = "";
 
-  // Optimistically show the user's message
   const { row: userRow } = buildMessageRow("user", content);
   messagesEl.appendChild(userRow);
   scrollToBottom();
 
-  // Placeholder "thinking" bubble for the assistant
   const { row: loadingRow, contentEl: loadingContentEl } = buildMessageRow(
     "assistant",
     "Thinking...",
@@ -220,7 +249,7 @@ composerEl.addEventListener("submit", async (e) => {
     const result = await sendMessage(content);
     loadingContentEl.textContent = result.assistant_message.content;
     loadingContentEl.classList.remove(...CONTENT_LOADING.split(" "));
-    await fetchChats(); // refresh sidebar (title / ordering may have changed)
+    await fetchChats();
     if (currentChatId) {
       const chat = chats.find((c) => c.id === currentChatId);
       if (chat) chatTitleEl.textContent = chat.title;
@@ -251,7 +280,16 @@ function autoResize() {
 document.getElementById("newChatBtn").addEventListener("click", createChat);
 
 // ---------- Init ----------
+document.getElementById("logoutBtn")?.addEventListener("click", () => {
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("user_email");
+  window.location.href = "/static/login.html";
+});
+
 (async function init() {
+  // Check token again inside init to prevent any initial race condition
+  if (!localStorage.getItem("access_token")) return;
+
   await fetchChats();
   const savedChatId = localStorage.getItem("lastChatId");
   if (savedChatId && chats.some((c) => c.id === Number(savedChatId))) {

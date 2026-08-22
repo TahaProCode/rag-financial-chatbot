@@ -4,9 +4,27 @@ FastAPI uses them to validate incoming data and to generate the
 interactive docs at /docs automatically.
 """
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field,EmailStr
 
+class SignupRequest(BaseModel):
+    username : str = Field(..., min_length=10)
+    email: EmailStr
+    password: str = Field(..., min_length=8)
 
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str    
+
+class UserOut(BaseModel):
+    id: int
+    username: str
+    email: EmailStr
+    created_at: datetime
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserOut
 class ChatSessionCreate(BaseModel):
     title: str = Field(default="New chat", max_length=200)
 

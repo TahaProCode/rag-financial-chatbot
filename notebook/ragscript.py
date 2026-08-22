@@ -385,8 +385,8 @@ from psycopg2.extras import execute_values
 
 DB_CONFIG = {
     "host": "localhost",
-    "port": 5432,
-    "dbname": "rag_chatbot",
+    "port": 5433,
+    "dbname": "rag-chatbot",
     "user": "postgres",
     "password": "taha123",
 }

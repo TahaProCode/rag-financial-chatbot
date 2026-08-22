@@ -40,7 +40,17 @@ def get_conn():
 
 
 def init_tables():
-    """Create chat_sessions and chat_messages tables if they don't exist yet."""
+    """Create chat_sessions, chat_messages, and users tables if they don't exist yet."""
+    create_user = """
+    CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username TEXT NOT NULL UNIQUE,
+        email TEXT NOT NULL UNIQUE,
+        hashed_password TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    """
+
     create_sessions = """
     CREATE TABLE IF NOT EXISTS chat_sessions (
         id SERIAL PRIMARY KEY,
@@ -49,6 +59,12 @@ def init_tables():
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     """
+
+    add_user_id_column = """
+    ALTER TABLE chat_sessions
+    ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+    """
+
     create_messages = """
     CREATE TABLE IF NOT EXISTS chat_messages (
         id SERIAL PRIMARY KEY,
@@ -58,14 +74,18 @@ def init_tables():
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     """
+
     create_index = """
     CREATE INDEX IF NOT EXISTS idx_chat_messages_session_id
     ON chat_messages(session_id);
     """
+
     with get_conn() as conn:
         conn.autocommit = True
         with conn.cursor() as cur:
-            cur.execute(create_sessions)
-            cur.execute(create_messages)
-            cur.execute(create_index)
-    print("chat_sessions and chat_messages tables ready.")
+            cur.execute(create_user)           # 1. users table pehle (chat_sessions isay reference karti hai)
+            cur.execute(create_sessions)        # 2. chat_sessions table
+            cur.execute(add_user_id_column)     # 3. ab user_id column add karo (users table exist karti hai ab)
+            cur.execute(create_messages)        # 4. chat_messages
+            cur.execute(create_index)           # 5. index
+    print("users, chat_sessions, and chat_messages tables ready.")
