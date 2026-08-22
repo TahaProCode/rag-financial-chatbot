@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: rag-chatbot-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: rag-chatbot
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: taha123
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  app:
+    build: ./fastapi-chatbot
+    container_name: rag-chatbot-app
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: rag-chatbot
+      DB_USER: postgres
+      DB_PASSWORD: taha123
+      OLLAMA_HOST: http://host.docker.internal:11434
+      DATA_DIR: /app/data
+      JWT_SECRET_KEY: "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
+    volumes:
+      - ./data:/app/data
+      - ./fastapi-chatbot:/app  # <-- YEH LINE ADD KI HAI (Hot Reloading ke liye)
+    ports:
+      - "8000:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  pgdata:

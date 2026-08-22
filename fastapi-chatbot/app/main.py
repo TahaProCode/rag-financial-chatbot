@@ -17,9 +17,10 @@ from .graph import chat_graph_builder
 from .import crud, schemas
 from .database import DB_CONFIG, init_tables
 from .rag_service import load_rag_service
-
-
-
+from .ingest import run_ingestion
+from .auth_routes import router as auth_router
+from .dependencies import get_current_user
+from fastapi import Depends
 # async def lifespan(app: FastAPI):
 #     # Runs once when the server starts
 #     init_tables()
@@ -54,6 +55,7 @@ from .rag_service import load_rag_service
 async def lifespan(app: FastAPI):
     init_tables()
     load_rag_service()
+    run_ingestion()   # idempotent — skips automatically if data already exists
 
     db_uri = (
         f"postgresql://{DB_CONFIG['user']}:{DB_CONFIG['password']}"
@@ -83,6 +85,7 @@ async def lifespan(app: FastAPI):
     app.state.store_cm.__exit__(None, None, None)
 
 app = FastAPI(title="RAG Chatbot API", lifespan=lifespan)
+app.include_router(auth_router)
 # Allow the frontend (served from the same app, but also handy if you ever
 # split it out to its own dev server on a different port) to call the API.
 app.add_middleware(
@@ -95,24 +98,25 @@ app.add_middleware(
 
 # ---------------------------------------------------------------------
 # Chat session CRUD
-# ---------------------------------------------------------------------
+
+
 
 @app.post("/api/chats", response_model=schemas.ChatSessionOut)
-def create_chat(payload: schemas.ChatSessionCreate):
-    """Create a new chat session (like clicking 'New chat')."""
-    return crud.create_session(payload.title)
+def create_chat(payload: schemas.ChatSessionCreate, current_user: dict = Depends(get_current_user)):
+    """Create a new chat session bound to current user."""
+    return crud.create_session(payload.title, user_id=current_user["id"])
 
 
 @app.get("/api/chats", response_model=list[schemas.ChatSessionOut])
-def list_chats():
-    """List all chat sessions, most recently active first (sidebar list)."""
-    return crud.list_sessions()
+def list_chats(current_user: dict = Depends(get_current_user)):
+    """List all chat sessions for the logged in user."""
+    return crud.list_sessions(user_id=current_user["id"])
 
 
 @app.get("/api/chats/{chat_id}", response_model=schemas.ChatSessionWithMessages)
-def get_chat(chat_id: int):
+def get_chat(chat_id: int, current_user: dict = Depends(get_current_user)):
     """Get one chat session plus its full message history."""
-    session = crud.get_session(chat_id)
+    session = crud.get_session(chat_id, user_id=current_user["id"])
     if not session:
         raise HTTPException(status_code=404, detail="Chat not found")
     session["messages"] = crud.list_messages(chat_id)
@@ -120,9 +124,9 @@ def get_chat(chat_id: int):
 
 
 @app.put("/api/chats/{chat_id}", response_model=schemas.ChatSessionOut)
-def rename_chat(chat_id: int, payload: schemas.ChatSessionUpdate):
+def rename_chat(chat_id: int, payload: schemas.ChatSessionUpdate, current_user: dict = Depends(get_current_user)):
     """Rename a chat's title."""
-    updated = crud.update_session_title(chat_id, payload.title)
+    updated = crud.update_session_title(chat_id, payload.title, user_id=current_user["id"])
     if not updated:
         raise HTTPException(status_code=404, detail="Chat not found")
     return updated
@@ -133,20 +137,19 @@ def rename_chat(chat_id: int, payload: schemas.ChatSessionUpdate):
 # ---------------------------------------------------------------------
 
 @app.get("/api/chats/{chat_id}/messages", response_model=list[schemas.MessageOut])
-def get_messages(chat_id: int):
-    if not crud.get_session(chat_id):
+def get_messages(chat_id: int, current_user: dict = Depends(get_current_user)):
+    if not crud.get_session(chat_id, user_id=current_user["id"]):
         raise HTTPException(status_code=404, detail="Chat not found")
     return crud.list_messages(chat_id)
 
 
 @app.post("/api/chats/{chat_id}/messages", response_model=schemas.SendMessageResponse)
-def send_message(chat_id: int, payload: schemas.SendMessageRequest):
-    # Retrieve chat_graph directly from app state context
+def send_message(chat_id: int, payload: schemas.SendMessageRequest, current_user: dict = Depends(get_current_user)):
     chat_graph = getattr(app.state, "chat_graph", None)
     if chat_graph is None:
         raise HTTPException(status_code=503, detail="Graph is initializing, please try again.")
 
-    session = crud.get_session(chat_id)
+    session = crud.get_session(chat_id, user_id=current_user["id"])
     if not session:
         raise HTTPException(status_code=404, detail="Chat not found")
 
@@ -154,7 +157,7 @@ def send_message(chat_id: int, payload: schemas.SendMessageRequest):
 
     if session["title"] == "New chat":
         auto_title = payload.content.strip()[:60]
-        crud.update_session_title(chat_id, auto_title or "New chat")
+        crud.update_session_title(chat_id, auto_title or "New chat", user_id=current_user["id"])
 
     config = {"configurable": {"thread_id": str(chat_id)}}
     result = chat_graph.invoke(
@@ -168,56 +171,25 @@ def send_message(chat_id: int, payload: schemas.SendMessageRequest):
 
     return {"user_message": user_message, "assistant_message": assistant_message}
 
-# def send_message(chat_id: int, payload: schemas.SendMessageRequest):
-#     """
-#     The core chat action: store the user's message, run it through the
-#     RAG pipeline (retrieve + Ollama), store the assistant's reply, and
-#     return both. Also auto-titles a fresh chat from the first message.
-#     """
-#     from .rag_service import rag_service  # imported here so lifespan has already loaded it
-
-#     session = crud.get_session(chat_id)
-#     if not session:
-#         raise HTTPException(status_code=404, detail="Chat not found")
-
-#     user_message = crud.add_message(chat_id, "user", payload.content)
-
-#     # Auto-title new chats from their first message, like ChatGPT does
-#     if session["title"] == "New chat":
-#         auto_title = payload.content.strip()[:60]
-#         crud.update_session_title(chat_id, auto_title or "New chat")
-
-#     answer = rag_service.answer(payload.content, top_k=payload.top_k)
-#     assistant_message = crud.add_message(chat_id, "assistant", answer)
-
-#     crud.touch_session(chat_id)
-
-#     return {"user_message": user_message, "assistant_message": assistant_message}
-
 
 @app.delete("/api/chats/{chat_id}", status_code=204)
-def delete_chat(chat_id: int):
-    """Delete a chat session, its messages, and clear its long-term store memory."""
-    deleted = crud.delete_session(chat_id)
+def delete_chat(chat_id: int, current_user: dict = Depends(get_current_user)):
+    """Delete a chat session, its messages, and clear its memory."""
+    deleted = crud.delete_session(chat_id, user_id=current_user["id"])
     if not deleted:
         raise HTTPException(status_code=404, detail="Chat not found")
     
     chat_graph = getattr(app.state, "chat_graph", None)
     
-    # 1. Clear Checkpointer Thread History (Short-term)
     if chat_graph and getattr(chat_graph, "checkpointer", None):
         try:
             chat_graph.checkpointer.delete_thread(str(chat_id))
         except Exception as e:
             print(f"Checkpointer thread delete error: {e}")
 
-    # 2. Clear Long-Term Memory Store for this thread / user
     if chat_graph and getattr(chat_graph, "store", None):
         try:
-            # Agar aap thread-wise memory rakh rahe hain
             chat_graph.store.delete((f"user_profile_{chat_id}",), "profile_data")
-            
-            # Agar aap global memory saaf karna chahte hain jab koi chat delete ho
             chat_graph.store.delete(("user_profile",), "profile_data")
         except Exception as e:
             print(f"Store memory delete error: {e}")

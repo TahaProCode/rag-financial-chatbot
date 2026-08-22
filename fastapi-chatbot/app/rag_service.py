@@ -47,15 +47,12 @@ def is_small_talk(query: str) -> bool:
 def generate_small_talk_reply(query: str, user_profile: dict = None, model: str = OLLAMA_MODEL) -> str:
     """A separate, ungrounded reply path for greetings/small talk."""
     
-    # Dynamic profile formatting
-    if user_profile:
-        name = user_profile.get("name", "User")
-        role = user_profile.get("role", "Engineer")
-        location = user_profile.get("location", "Lahore")
-    else:
-        name = "Asad" 
-        role = "Software Engineer"
-        location = "Lahore"
+    # Safe defaults in case user_profile is None or empty
+    user_profile = user_profile or {}
+    
+    name = user_profile.get("name", "User")
+    role = user_profile.get("role", "Engineer")
+    location = user_profile.get("location", "Lahore")
 
     system_prompt = f"""You are a friendly assistant embedded in a financial SEC-filings chatbot.
 Reply briefly and warmly to greetings or small talk.
