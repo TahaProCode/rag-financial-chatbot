@@ -62,8 +62,9 @@ form.addEventListener("submit", async (e) => {
 
     // Save JWT token & email, then navigate to main chat UI
     localStorage.setItem("access_token", data.access_token);
-    if (data.user && data.user.email) {
+    if (data.user) {
       localStorage.setItem("user_email", data.user.email);
+      localStorage.setItem("username", data.user.username);
     }
 
     window.location.href = "/static/index.html";

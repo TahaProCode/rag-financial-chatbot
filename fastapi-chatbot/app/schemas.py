@@ -15,6 +15,10 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str    
 
+class UserUpdateRequest(BaseModel):
+    username: str = Field(..., min_length=3, max_length=30)
+    email: EmailStr
+    
 class UserOut(BaseModel):
     id: int
     username: str

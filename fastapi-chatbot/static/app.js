@@ -286,6 +286,96 @@ document.getElementById("logoutBtn")?.addEventListener("click", () => {
   window.location.href = "/static/login.html";
 });
 
+// ---------- Account Dropdown + Modal ----------
+const userAvatar = document.getElementById("userAvatar");
+const userDropdown = document.getElementById("userDropdown");
+const accountBtn = document.getElementById("accountBtn");
+const accountModal = document.getElementById("accountModal");
+const closeAccountModal = document.getElementById("closeAccountModal");
+const accountUsername = document.getElementById("accountUsername");
+const accountEmail = document.getElementById("accountEmail");
+const accountError = document.getElementById("accountError");
+const accountSuccess = document.getElementById("accountSuccess");
+const saveAccountBtn = document.getElementById("saveAccountBtn");
+const logoutBtn = document.getElementById("logoutBtn");
+
+// Toggle dropdown on avatar click
+userAvatar.addEventListener("click", (e) => {
+  e.stopPropagation();
+  userDropdown.classList.toggle("hidden");
+});
+
+// Close dropdown when clicking anywhere else
+document.addEventListener("click", () => {
+  userDropdown.classList.add("hidden");
+});
+
+// Open account modal with fresh data from backend
+accountBtn.addEventListener("click", async () => {
+  userDropdown.classList.add("hidden");
+  accountError.classList.add("hidden");
+  accountSuccess.classList.add("hidden");
+
+  try {
+    const res = await authFetch(`${API}/auth/me`);
+    const user = await res.json();
+    accountUsername.value = user.username;
+    accountEmail.value = user.email;
+    accountModal.classList.remove("hidden");
+  } catch (err) {
+    console.error("Failed to load account info", err);
+  }
+});
+
+closeAccountModal.addEventListener("click", () => {
+  accountModal.classList.add("hidden");
+});
+
+saveAccountBtn.addEventListener("click", async () => {
+  accountError.classList.add("hidden");
+  accountSuccess.classList.add("hidden");
+
+  try {
+    const res = await authFetch(`${API}/auth/me`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: accountUsername.value.trim(),
+        email: accountEmail.value.trim(),
+      }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.detail || "Update failed.");
+    }
+
+    localStorage.setItem("username", data.username);
+    localStorage.setItem("user_email", data.email);
+    updateAvatarLetter();
+
+    accountSuccess.textContent = "Saved successfully!";
+    accountSuccess.classList.remove("hidden");
+  } catch (err) {
+    accountError.textContent = err.message;
+    accountError.classList.remove("hidden");
+  }
+});
+
+logoutBtn.addEventListener("click", () => {
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("user_email");
+  localStorage.removeItem("username");
+  window.location.href = "/static/login.html";
+});
+
+// Sets the avatar letter from the stored username (first letter, uppercase)
+function updateAvatarLetter() {
+  const username = localStorage.getItem("username");
+  userAvatar.textContent = username ? username[0].toUpperCase() : "U";
+}
+updateAvatarLetter();
+
 (async function init() {
   // Check token again inside init to prevent any initial race condition
   if (!localStorage.getItem("access_token")) return;
