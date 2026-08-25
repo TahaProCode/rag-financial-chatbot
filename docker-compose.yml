@@ -19,6 +19,7 @@ services:
     depends_on:
       - postgres
     environment:
+      GOOGLE_CLIENT_ID: "628734123221-bflhl7h3vlcgo2rambjg2cunvephv8pt.apps.googleusercontent.com"
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: rag-chatbot
@@ -29,7 +30,7 @@ services:
       JWT_SECRET_KEY: "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
     volumes:
       - ./data:/app/data
-      - ./fastapi-chatbot:/app  # <-- YEH LINE ADD KI HAI (Hot Reloading ke liye)
+      - ./fastapi-chatbot:/app # <-- YEH LINE ADD KI HAI (Hot Reloading ke liye)
     ports:
       - "8000:8000"
     extra_hosts:

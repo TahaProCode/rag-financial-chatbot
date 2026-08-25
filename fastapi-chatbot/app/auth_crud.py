@@ -51,6 +51,33 @@ def get_user_by_id(user_id: int) -> Optional[dict]:
             )
             row = cur.fetchone()
     return _user_row_to_dict(row) if row else None
+
+# ---------- OAuth2.0 google authentication check ----------
+def get_or_create_google_user(email: str, google_id: str, name: str) -> dict:
+    """
+    Core linking logic:
+    - Agar email already exists (chahe password se signup hua ho), usi account se login karo.
+    - Agar exist nahi karta, naya account banao, password NULL rakhte hue.
+    """
+    existing = get_user_by_email(email)
+    if existing:
+        return existing  # SAME account se link ho gaya, jaisa humne decide kiya
+
+    # Naya user — username Google ke naam se derive karte hain
+    base_username = name.replace(" ", "_").lower() or email.split("@")[0]
+    username = base_username
+
+    with get_conn() as conn:
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO users (username, email, hashed_password, google_id)
+                   VALUES (%s, %s, NULL, %s)
+                   RETURNING id, username, email, created_at;""",
+                (username, email, google_id),
+            )
+            row = cur.fetchone()
+    return _user_row_to_dict(row)
 # ---------- Update user details ----------
 def update_user(user_id: int, username: str, email: str) -> Optional[dict]:
     with get_conn() as conn:

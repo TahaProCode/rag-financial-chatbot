@@ -1,12 +1,15 @@
 """
 Authentication routes: signup and login. Issues a JWT on success.
 """
+import os
 from fastapi import APIRouter, HTTPException,Depends
 from .dependencies import get_current_user
 from . import auth_crud
 from .auth import hash_password, verify_password, create_access_token
-from .schemas import SignupRequest, LoginRequest, TokenResponse, UserOut,UserUpdateRequest
-
+from .schemas import SignupRequest, LoginRequest, TokenResponse, UserOut,UserUpdateRequest,GoogleAuthRequest
+from google.oauth2 import id_token as google_id_token
+from google.auth.transport import requests as google_requests
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 # Prefix updated to /api/auth to match JS request URL
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -50,3 +53,24 @@ def update_me(payload: UserUpdateRequest, current_user: dict = Depends(get_curre
 
     updated = auth_crud.update_user(current_user["id"], payload.username, payload.email)
     return UserOut(**updated)
+
+
+@router.post("/google", response_model=TokenResponse)
+def google_login(payload: GoogleAuthRequest):
+    try:
+        # Ye line Google ki public key se signature verify karti hai
+        idinfo = google_id_token.verify_oauth2_token(
+            payload.id_token, google_requests.Request(), GOOGLE_CLIENT_ID
+        )
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid Google token.")
+
+    email = idinfo["email"]
+    google_id = idinfo["sub"]  # Google ka unique user identifier
+    name = idinfo.get("name", "")
+
+    user = auth_crud.get_or_create_google_user(email=email, google_id=google_id, name=name)
+
+    # Yahan se aage BILKUL WAISA HI hai jaisa normal login mein hota hai
+    token = create_access_token({"sub": str(user["id"])})
+    return TokenResponse(access_token=token, user=UserOut(**user))

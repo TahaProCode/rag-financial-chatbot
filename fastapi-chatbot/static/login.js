@@ -73,3 +73,22 @@ form.addEventListener("submit", async (e) => {
     errorMsg.classList.remove("hidden");
   }
 });
+async function handleGoogleSignIn(response) {
+  try {
+    const res = await fetch(`${API}/auth/google`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id_token: response.credential }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Google sign-in failed.");
+
+    localStorage.setItem("access_token", data.access_token);
+    localStorage.setItem("user_email", data.user.email);
+    localStorage.setItem("username", data.user.username);
+    window.location.href = "/static/index.html";
+  } catch (err) {
+    errorMsg.textContent = err.message;
+    errorMsg.classList.remove("hidden");
+  }
+}
