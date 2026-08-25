@@ -29,6 +29,9 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserOut
+
+class GoogleAuthRequest(BaseModel):
+    id_token: str
 class ChatSessionCreate(BaseModel):
     title: str = Field(default="New chat", max_length=200)
 

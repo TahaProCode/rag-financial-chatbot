@@ -7,29 +7,51 @@
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   </head>
   <body
-    class="bg-[#131314] text-[#e3e3e3] font-sans antialiased h-screen flex items-center justify-center"
+    class="bg-[#131314] text-[#e3e3e3] font-sans antialiased min-h-screen flex items-center justify-center p-4"
   >
     <div
-      class="w-full max-w-sm bg-[#1e1f20] p-8 rounded-2xl border border-[#37393b]"
+      class="w-full max-w-md bg-[#1e1f20] p-8 rounded-3xl border border-[#37393b]/60 shadow-2xl backdrop-blur-xl"
     >
-      <h1 class="text-xl font-semibold mb-1" id="formTitle">Log in</h1>
-      <p class="text-sm text-[#9e9e9e] mb-6">Financial RAG Chatbot</p>
+      <!-- Header Section -->
+      <div class="text-center mb-8">
+        <div
+          class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#4285f4]/10 text-[#4285f4] mb-3 border border-[#4285f4]/20"
+        >
+          <svg
+            class="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round.stroke-width"
+              stroke-width="2"
+              d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+            ></path>
+          </svg>
+        </div>
+        <h1 class="text-2xl font-bold tracking-tight mb-1" id="formTitle">
+          Log in
+        </h1>
+        <p class="text-sm text-[#9e9e9e]">Financial RAG Chatbot Intelligence</p>
+      </div>
 
-      <form id="authForm" class="flex flex-col gap-4">
+      <form id="authForm" class="flex flex-col gap-3.5">
         <!-- NAYA FIELD: Username (Signup ke waqt hi visible hoga) -->
         <input
           type="text"
           id="username"
           placeholder="Username"
-          class="bg-[#131314] border border-[#37393b] rounded-lg px-4 py-2.5 text-sm outline-none focus:border-[#4285f4]"
+          class="bg-[#131314] border border-[#37393b] rounded-xl px-4 py-3 text-sm outline-none focus:border-[#4285f4] focus:ring-2 focus:ring-[#4285f4]/20 transition-all placeholder:text-zinc-600"
         />
 
         <input
           type="email"
           id="email"
-          placeholder="Email"
+          placeholder="Email address"
           required
-          class="bg-[#131314] border border-[#37393b] rounded-lg px-4 py-2.5 text-sm outline-none focus:border-[#4285f4]"
+          class="bg-[#131314] border border-[#37393b] rounded-xl px-4 py-3 text-sm outline-none focus:border-[#4285f4] focus:ring-2 focus:ring-[#4285f4]/20 transition-all placeholder:text-zinc-600"
         />
 
         <input
@@ -38,28 +60,65 @@
           placeholder="Password"
           required
           minlength="6"
-          class="bg-[#131314] border border-[#37393b] rounded-lg px-4 py-2.5 text-sm outline-none focus:border-[#4285f4]"
+          class="bg-[#131314] border border-[#37393b] rounded-xl px-4 py-3 text-sm outline-none focus:border-[#4285f4] focus:ring-2 focus:ring-[#4285f4]/20 transition-all placeholder:text-zinc-600"
         />
 
-        <p id="errorMsg" class="text-red-400 text-sm hidden"></p>
+        <p
+          id="errorMsg"
+          class="text-red-400 text-xs font-medium px-1 hidden"
+        ></p>
 
         <button
           type="submit"
           id="submitBtn"
-          class="bg-[#4285f4] hover:bg-[#5a95f5] text-white rounded-lg py-2.5 text-sm font-medium transition-colors"
+          class="mt-1 bg-[#4285f4] hover:bg-[#5a95f5] text-white rounded-xl py-3 text-sm font-semibold shadow-lg shadow-[#4285f4]/20 transition-all active:scale-[0.99] cursor-pointer"
         >
           Log in
         </button>
       </form>
 
-      <p class="text-sm text-[#9e9e9e] mt-4 text-center">
+      <!-- Divider -->
+      <div class="relative flex py-5 items-center">
+        <div class="flex-grow border-t border-[#37393b]"></div>
+        <span
+          class="flex-shrink mx-4 text-xs text-[#9e9e9e] uppercase tracking-wider font-medium"
+          >or continue with</span
+        >
+        <div class="flex-grow border-t border-[#37393b]"></div>
+      </div>
+
+      <!-- Google Sign In Container -->
+      <div class="flex justify-center w-full overflow-hidden rounded-xl">
+        <div
+          id="g_id_onload"
+          data-client_id="628734123221-bflhl7h3vlcgo2rambjg2cunvephv8pt.apps.googleusercontent.com"
+          data-callback="handleGoogleSignIn"
+        ></div>
+        <div
+          class="g_id_signin w-full flex justify-center"
+          data-type="standard"
+          data-theme="filled_black"
+          data-size="large"
+          data-width="100%"
+          data-shape="rectangular"
+          data-text="signin_with"
+          data-logo_alignment="left"
+        ></div>
+      </div>
+
+      <!-- Toggle Mode -->
+      <p class="text-sm text-[#9e9e9e] mt-6 text-center">
         <span id="toggleText">Don't have an account?</span>
-        <button id="toggleModeBtn" class="text-[#4285f4] hover:underline">
+        <button
+          id="toggleModeBtn"
+          class="text-[#4285f4] font-medium hover:underline ml-1 cursor-pointer"
+        >
           Sign up
         </button>
       </p>
     </div>
 
     <script src="/static/login.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
   </body>
 </html>

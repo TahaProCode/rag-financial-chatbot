@@ -81,7 +81,7 @@ def delete_session(session_id: int , user_id:int) -> bool:
         conn.autocommit = True
         with conn.cursor() as cur:
             cur.execute(
-                "DELETE FROM chat_sessions WHERE id = %s RETURNING id;",
+                "DELETE FROM chat_sessions WHERE id = %s AND user_id = %s RETURNING id;",
                 (session_id,user_id),
             )
             row = cur.fetchone()
@@ -122,13 +122,13 @@ def delete_message(message_id: int) -> bool:
     with get_conn() as conn:
         conn.autocommit = True
         with conn.cursor() as cur:
+            # FIX: Table name chat_messages kar di hai aur parameter tuple fix kar diya hai
             cur.execute(
-                "DELETE FROM chat_sessions WHERE id = %s AND user_id = %s RETURNING id;",
+                "DELETE FROM chat_messages WHERE id = %s RETURNING id;",
                 (message_id,),
             )
             row = cur.fetchone()
     return row is not None
-
 
 # ---------- helpers ----------
 

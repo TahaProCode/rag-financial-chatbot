@@ -46,11 +46,19 @@ def init_tables():
         id SERIAL PRIMARY KEY,
         username TEXT NOT NULL UNIQUE,
         email TEXT NOT NULL UNIQUE,
-        hashed_password TEXT NOT NULL,
+        hashed_password TEXT,
+        google_id TEXT UNIQUE,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     """
 
+    alter_password_nullable = """
+    ALTER TABLE users ALTER COLUMN hashed_password DROP NOT NULL;
+    """
+
+    alter_add_google_id = """
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id TEXT UNIQUE;
+    """
     create_sessions = """
     CREATE TABLE IF NOT EXISTS chat_sessions (
         id SERIAL PRIMARY KEY,
@@ -83,7 +91,9 @@ def init_tables():
     with get_conn() as conn:
         conn.autocommit = True
         with conn.cursor() as cur:
-            cur.execute(create_user)           # 1. users table pehle (chat_sessions isay reference karti hai)
+            cur.execute(create_user)   
+            cur.execute(alter_add_google_id)        # 2. add google_id if missing
+            cur.execute(alter_password_nullable)    # 1. users table pehle (chat_sessions isay reference karti hai)
             cur.execute(create_sessions)        # 2. chat_sessions table
             cur.execute(add_user_id_column)     # 3. ab user_id column add karo (users table exist karti hai ab)
             cur.execute(create_messages)        # 4. chat_messages
