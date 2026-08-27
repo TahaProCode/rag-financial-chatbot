@@ -8,9 +8,18 @@ const errorMsg = document.getElementById("errorMsg");
 let mode = "login"; // or "signup"
 const API = "/api";
 // If already logged in, redirect to chat application
-if (localStorage.getItem("access_token")) {
-  window.location.href = "/static/index.html";
-}
+// If already logged in, redirect to index
+(async () => {
+  try {
+    const res = await fetch(`${API}/auth/me`, { credentials: "include" });
+    if (res.ok) {
+      // Redirect to main page without reloading loop
+      window.location.replace("/static/index.html");
+    }
+  } catch (e) {
+    // Keep user on login page silently
+  }
+})();
 
 const usernameInput = document.getElementById("username");
 
@@ -46,6 +55,7 @@ form.addEventListener("submit", async (e) => {
   try {
     const res = await fetch(`${API}${endpoint}`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
@@ -53,19 +63,16 @@ form.addEventListener("submit", async (e) => {
     const data = await res.json();
 
     if (!res.ok) {
-      // Handles pydantic validation errors (e.g. password < 8 chars)
       if (Array.isArray(data.detail)) {
         throw new Error(data.detail[0].msg);
       }
       throw new Error(data.detail || "Something went wrong.");
     }
 
-    // Save JWT token & email, then navigate to main chat UI
-    localStorage.setItem("access_token", data.access_token);
-    if (data.user) {
-      localStorage.setItem("user_email", data.user.email);
-      localStorage.setItem("username", data.user.username);
-    }
+    // Token ab httpOnly cookie mein hai (backend ne set kiya) — JS ise
+    // chhoo bhi nahi sakti. Sirf non-sensitive display info save karte hain.
+    localStorage.setItem("user_email", data.email);
+    localStorage.setItem("username", data.username);
 
     window.location.href = "/static/index.html";
   } catch (err) {
@@ -77,15 +84,15 @@ async function handleGoogleSignIn(response) {
   try {
     const res = await fetch(`${API}/auth/google`, {
       method: "POST",
+      credentials: "include", // <-- add karein
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id_token: response.credential }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Google sign-in failed.");
 
-    localStorage.setItem("access_token", data.access_token);
-    localStorage.setItem("user_email", data.user.email);
-    localStorage.setItem("username", data.user.username);
+    localStorage.setItem("user_email", data.email);
+    localStorage.setItem("username", data.username);
     window.location.href = "/static/index.html";
   } catch (err) {
     errorMsg.textContent = err.message;

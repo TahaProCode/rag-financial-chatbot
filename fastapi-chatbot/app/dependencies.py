@@ -1,19 +1,19 @@
 """
-Reusable dependency for protecting routes — require a valid JWT and
-resolve it to the actual user before the route function runs.
+Reusable dependency for protecting routes — reads the JWT from an
+httpOnly cookie (not the Authorization header) and resolves it to
+the actual user before the route function runs.
 """
-from fastapi import Depends, HTTPException
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import HTTPException, Request
 
 from . import auth_crud
 from .auth import decode_access_token
 
-# tokenUrl is just for the /docs page's "Authorize" button — it doesn't
-# affect how we actually validate tokens (we do that ourselves below).
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
+def get_current_user(request: Request) -> dict:
+    token = request.cookies.get("access_token")
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated.")
 
-def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     payload = decode_access_token(token)
     if payload is None:
         raise HTTPException(status_code=401, detail="Invalid or expired token.")
