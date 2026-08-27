@@ -1,21 +1,29 @@
 // --- AUTH GUARD: redirect to login if no token ---
-const token = localStorage.getItem("access_token");
-if (!token) {
-  window.location.href = "/static/login.html";
-  throw new Error("No access token found. Halting execution for redirect.");
+// Guard: httpOnly cookie ko JS check nahi kar sakti, is liye backend
+async function checkAuthOrRedirect() {
+  try {
+    const res = await fetch("/api/auth/me", { credentials: "include" });
+    if (!res.ok) {
+      window.location.href = "/static/login.html";
+      return false;
+    }
+    return true;
+  } catch (e) {
+    window.location.href = "/static/login.html";
+    return false;
+  }
 }
 
 // --- Helper: fetch wrapper that always attaches the auth token ---
 async function authFetch(url, options = {}) {
-  const headers = {
-    ...(options.headers || {}),
-    Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-  };
-  const res = await fetch(url, { ...options, headers });
+  const res = await fetch(url, {
+    ...options,
+    credentials: "include", // cookie automatically attach hoti hai isse
+  });
 
   if (res.status === 401) {
-    localStorage.removeItem("access_token");
     localStorage.removeItem("user_email");
+    localStorage.removeItem("username");
     window.location.href = "/static/login.html";
     throw new Error("Session expired, redirecting to login.");
   }
@@ -362,8 +370,12 @@ saveAccountBtn.addEventListener("click", async () => {
   }
 });
 
-logoutBtn.addEventListener("click", () => {
-  localStorage.removeItem("access_token");
+logoutBtn.addEventListener("click", async () => {
+  try {
+    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+  } catch (e) {
+    console.error("Logout request failed", e);
+  }
   localStorage.removeItem("user_email");
   localStorage.removeItem("username");
   window.location.href = "/static/login.html";
@@ -376,9 +388,10 @@ function updateAvatarLetter() {
 }
 updateAvatarLetter();
 
+// Fixed Init Execution
 (async function init() {
-  // Check token again inside init to prevent any initial race condition
-  if (!localStorage.getItem("access_token")) return;
+  const isAuthed = await checkAuthOrRedirect();
+  if (!isAuthed) return; // Immediate halt if unauthenticated
 
   await fetchChats();
   const savedChatId = localStorage.getItem("lastChatId");
