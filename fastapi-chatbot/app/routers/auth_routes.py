@@ -3,14 +3,14 @@ Authentication routes: signup, login, Google OAuth, logout, refresh, user manage
 Sets JWTs (Access and Refresh) as httpOnly cookies.
 """
 import os
-from typing import List, Optional
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
 from jose import JWTError, jwt
 
-from . import auth_crud
-from .auth import (
+from app import auth_crud
+from app.auth import (
     ALGORITHM,
     SECRET_KEY,
     create_access_token,
@@ -19,9 +19,9 @@ from .auth import (
     hash_password,
     verify_password,
 )
-from .database import get_conn
-from .dependencies import get_current_user, require_admin
-from .schemas import (
+from app.database import get_conn
+from app.dependencies import get_current_user, require_admin
+from app.schemas import (
     GoogleAuthRequest,
     LoginRequest,
     SignupRequest,

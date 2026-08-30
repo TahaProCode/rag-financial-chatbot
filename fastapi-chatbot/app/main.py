@@ -19,8 +19,8 @@ from . import crud, schemas
 from .database import DB_CONFIG, init_tables
 from .rag_service import load_rag_service
 from .ingest import run_ingestion
-from .auth_routes import router as auth_router
-from .schemas import RoleUpdatePayload
+from .routers.auth_routes import router as auth_router
+from .routers.admin_routes import router as admin_router
 from .dependencies import get_current_user
 
 
@@ -61,6 +61,7 @@ app = FastAPI(title="RAG Chatbot API", lifespan=lifespan)
 
 # Routers Include
 app.include_router(auth_router)
+app.include_router(admin_router)
 
 # 2. FIX: Admin router ko yahan include karein
 
@@ -70,40 +71,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# ---------------------------------------------------------------------
-# Admin Routes
-# ---------------------------------------------------------------------
 
-@app.get("/api/admin/users")
-def get_all_users(current_user: dict = Depends(get_current_user)):
-    """Fetch all registered users for admin dashboard."""
-    # Security Check: Direct regular users ko block karo
-    if current_user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
-    
-    # DB se users list fetch karein
-    users = crud.list_all_users() # Ensure crud me list_all_users() function majood ho
-    return users
-
-@app.put("/api/admin/users/{user_id}/role")
-def change_user_role(
-    user_id: int, 
-    payload: RoleUpdatePayload, 
-    current_user: dict = Depends(get_current_user)
-):
-    # Security check: Sirf Admin role change kar sakta hai
-    if current_user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
-
-    # Prevent self-demotion (Optionally Admin apna role accidently badal kar user na kar le)
-    if current_user.get("id") == user_id and payload.role != "admin":
-        raise HTTPException(status_code=400, detail="You cannot revoke your own admin rights.")
-
-    updated_user = crud.update_user_role(user_id, payload.role)
-    if not updated_user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    return updated_user
 # ---------------------------------------------------------------------
 # Chat session CRUD
 # ---------------------------------------------------------------------
