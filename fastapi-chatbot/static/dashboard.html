@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard — Financial RAG</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined"
+    />
+  </head>
+  <body
+    class="bg-[#131314] text-[#e3e3e3] font-sans min-h-screen flex flex-col"
+  >
+    <!-- Top Nav -->
+    <header
+      class="w-full flex items-center justify-between p-4 bg-[#1e1f20] border-b border-[#2d2f31]"
+    >
+      <div class="flex items-center gap-2">
+        <span class="material-icons-outlined text-[#4285f4]"
+          >admin_panel_settings</span
+        >
+        <h1 class="text-lg font-semibold tracking-wide">Admin Control Panel</h1>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <!-- Switch to Chat View Button -->
+        <a
+          href="/static/index.html"
+          class="flex items-center gap-2 px-4 py-2 bg-[#2d2f31] hover:bg-[#37393b] text-sm text-[#e3e3e3] rounded-xl transition-all cursor-pointer border border-[#37393b]"
+        >
+          <span class="material-icons-outlined text-sm">chat</span>
+          Switch to Chat Mode
+        </a>
+
+        <button
+          id="adminLogoutBtn"
+          class="p-2 hover:bg-[#2d2f31] text-red-400 hover:text-red-300 rounded-lg transition-colors cursor-pointer"
+          title="Logout"
+        >
+          <span class="material-icons-outlined">logout</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Content Area -->
+    <main class="flex-1 max-w-6xl w-full mx-auto p-6">
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h2 class="text-2xl font-bold">Registered System Users</h2>
+          <p class="text-sm text-[#808385]">
+            Manage system permissions and view active users
+          </p>
+        </div>
+        <button
+          id="refreshUsersBtn"
+          class="px-3 py-1.5 bg-[#2d2f31] hover:bg-[#37393b] text-xs rounded-lg transition-colors"
+        >
+          Refresh List
+        </button>
+      </div>
+
+      <!-- Users Table -->
+      <div
+        class="bg-[#1e1f20] rounded-2xl border border-[#37393b] overflow-hidden shadow-xl"
+      >
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr
+              class="bg-[#1a1a1c] border-b border-[#37393b] text-[#9e9e9e] text-xs uppercase tracking-wider"
+            >
+              <th class="p-4">User</th>
+              <th class="p-4">Email</th>
+              <th class="p-4">Role</th>
+              <th class="p-4">Joined Date</th>
+              <th class="p-4">Actions</th>
+            </tr>
+          </thead>
+          <tbody
+            id="usersTableBody"
+            class="divide-y divide-[#37393b] text-sm text-[#e3e3e3]"
+          >
+            <!-- Dynamic rows will render here -->
+          </tbody>
+        </table>
+      </div>
+    </main>
+
+    <script src="/static/dashboard.js"></script>
+  </body>
+</html>

@@ -88,12 +88,16 @@ def init_tables():
     ON chat_messages(session_id);
     """
 
+    alter_add_role = """
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';
+    """
     with get_conn() as conn:
         conn.autocommit = True
         with conn.cursor() as cur:
             cur.execute(create_user)   
             cur.execute(alter_add_google_id)        # 2. add google_id if missing
             cur.execute(alter_password_nullable)    # 1. users table pehle (chat_sessions isay reference karti hai)
+            cur.execute(alter_add_role)
             cur.execute(create_sessions)        # 2. chat_sessions table
             cur.execute(add_user_id_column)     # 3. ab user_id column add karo (users table exist karti hai ab)
             cur.execute(create_messages)        # 4. chat_messages

@@ -13,11 +13,19 @@ const API = "/api";
   try {
     const res = await fetch(`${API}/auth/me`, { credentials: "include" });
     if (res.ok) {
-      // Redirect to main page without reloading loop
-      window.location.replace("/static/index.html");
+      const user = await res.json();
+      localStorage.setItem("user_role", user.role); // Save role ('admin' or 'user')
+      localStorage.setItem("user_email", user.email);
+      localStorage.setItem("username", user.username);
+
+      if (user.role === "admin") {
+        window.location.replace("/static/dashboard.html");
+      } else {
+        window.location.replace("/static/index.html");
+      }
     }
   } catch (e) {
-    // Keep user on login page silently
+    // Keep on login page
   }
 })();
 
@@ -61,20 +69,21 @@ form.addEventListener("submit", async (e) => {
     });
 
     const data = await res.json();
-
     if (!res.ok) {
-      if (Array.isArray(data.detail)) {
-        throw new Error(data.detail[0].msg);
-      }
+      if (Array.isArray(data.detail)) throw new Error(data.detail[0].msg);
       throw new Error(data.detail || "Something went wrong.");
     }
 
-    // Token ab httpOnly cookie mein hai (backend ne set kiya) — JS ise
-    // chhoo bhi nahi sakti. Sirf non-sensitive display info save karte hain.
     localStorage.setItem("user_email", data.email);
     localStorage.setItem("username", data.username);
+    localStorage.setItem("user_role", data.role); // Role saved
 
-    window.location.href = "/static/index.html";
+    // Role-based redirection
+    if (data.role === "admin") {
+      window.location.href = "/static/dashboard.html";
+    } else {
+      window.location.href = "/static/index.html";
+    }
   } catch (err) {
     errorMsg.textContent = err.message;
     errorMsg.classList.remove("hidden");
@@ -84,7 +93,7 @@ async function handleGoogleSignIn(response) {
   try {
     const res = await fetch(`${API}/auth/google`, {
       method: "POST",
-      credentials: "include", // <-- add karein
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id_token: response.credential }),
     });
@@ -93,7 +102,13 @@ async function handleGoogleSignIn(response) {
 
     localStorage.setItem("user_email", data.email);
     localStorage.setItem("username", data.username);
-    window.location.href = "/static/index.html";
+    localStorage.setItem("user_role", data.role); // Role saved
+
+    if (data.role === "admin") {
+      window.location.href = "/static/dashboard.html";
+    } else {
+      window.location.href = "/static/index.html";
+    }
   } catch (err) {
     errorMsg.textContent = err.message;
     errorMsg.classList.remove("hidden");

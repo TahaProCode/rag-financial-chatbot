@@ -23,11 +23,16 @@ class UserOut(BaseModel):
     id: int
     username: str
     email: EmailStr
+    role: str
     created_at: datetime
 
 class GoogleAuthRequest(BaseModel):
     id_token: str
 
+
+class RoleUpdatePayload(BaseModel):
+    role: str
+    
 class ChatSessionCreate(BaseModel):
     title: str = Field(default="New chat", max_length=200)
 
