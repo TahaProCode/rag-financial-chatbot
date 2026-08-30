@@ -1,53 +1,58 @@
 """
-Authentication routes: signup, login, Google OAuth, logout, refresh.
-Sets JWTs (Access and Refresh) as httpOnly cookies — JavaScript cannot read them,
-preventing XSS-based token theft, with IP binding and Refresh Token Rotation (RTR).
+Authentication routes: signup, login, Google OAuth, logout, refresh, user management.
+Sets JWTs (Access and Refresh) as httpOnly cookies.
 """
 import os
-from fastapi import APIRouter, HTTPException, Depends, Response, Request, status
-from jose import jwt, JWTError
-from .dependencies import get_current_user
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token as google_id_token
+from jose import JWTError, jwt
+
 from . import auth_crud
 from .auth import (
-    hash_password, 
-    verify_password, 
-    create_access_token, 
-    create_refresh_token, 
-    get_client_ip, 
-    SECRET_KEY, 
-    ALGORITHM
+    ALGORITHM,
+    SECRET_KEY,
+    create_access_token,
+    create_refresh_token,
+    get_client_ip,
+    hash_password,
+    verify_password,
 )
+from .database import get_conn
+from .dependencies import get_current_user, require_admin
 from .schemas import (
-    SignupRequest, LoginRequest, UserOut, UserUpdateRequest, GoogleAuthRequest
+    GoogleAuthRequest,
+    LoginRequest,
+    SignupRequest,
+    UserOut,
+    UserUpdateRequest,
 )
-from google.oauth2 import id_token as google_id_token
-from google.auth.transport import requests as google_requests
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+# Single Router instance
+router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
-ACCESS_TOKEN_MAX_AGE = 15 * 60       # 15 mins (Short-lived)
-REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60  # 7 days (Long-lived)
+ACCESS_TOKEN_MAX_AGE = 15 * 60         # 15 mins
+REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60  # 7 days
 
 
 def _set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
-    # Set Access Token Cookie
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=False,  # Set True in production over HTTPS
+        secure=False,  # Set True in production
         samesite="lax",
         max_age=ACCESS_TOKEN_MAX_AGE,
         path="/",
     )
-    # Set Refresh Token Cookie
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=False,  # Set True in production over HTTPS
+        secure=False,  # Set True in production
         samesite="lax",
         max_age=REFRESH_TOKEN_MAX_AGE,
         path="/",
@@ -113,7 +118,6 @@ def google_login(payload: GoogleAuthRequest, request: Request, response: Respons
 
 @router.post("/refresh")
 def refresh(request: Request, response: Response):
-    # HttpOnly Cookie se refresh token read karna
     token = request.cookies.get("refresh_token")
     if not token:
         raise HTTPException(
@@ -139,19 +143,44 @@ def refresh(request: Request, response: Response):
     token_ip = data.get("ip")
     current_ip = get_client_ip(request)
 
-    # --- IP BINDING CHECK ---
     if token_ip != current_ip:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Security violation: IP address mismatch."
         )
 
-    # --- REFRESH TOKEN ROTATION (RTR) ---
     new_access_token = create_access_token({"sub": str(user_id)})
     new_refresh_token = create_refresh_token(user_id=str(user_id), client_ip=current_ip)
 
     _set_auth_cookies(response, new_access_token, new_refresh_token)
     return {"detail": "Token refreshed successfully."}
+
+
+@router.get("/admin/users", response_model=List[UserOut])
+def get_all_users(admin_user: dict = Depends(require_admin)):
+    """
+    Sirf Admin role wala user access kar sakta hai.
+    URL: /api/auth/admin/users
+    """
+    query = """
+        SELECT id, username, email, role, created_at 
+        FROM users 
+        ORDER BY created_at DESC;
+    """
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query)
+            rows = cur.fetchall()
+            return [
+                {
+                    "id": row[0],
+                    "username": row[1],
+                    "email": row[2],
+                    "role": row[3],
+                    "created_at": row[4]
+                }
+                for row in rows
+            ]
 
 
 @router.get("/me", response_model=UserOut)
@@ -172,7 +201,6 @@ def update_me(payload: UserUpdateRequest, current_user: dict = Depends(get_curre
 
 @router.post("/logout")
 def logout(response: Response):
-    # Both cookies expire karwa rahe hain
     response.delete_cookie(key="access_token", path="/")
     response.delete_cookie(key="refresh_token", path="/")
     return {"detail": "Logged out."}

@@ -86,8 +86,53 @@ def delete_session(session_id: int , user_id:int) -> bool:
             )
             row = cur.fetchone()
     return row is not None
+# -------- Update user role  ---------
 
+def update_user_role(user_id: int, new_role: str) -> Optional[dict]:
+    with get_conn() as conn:
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute(
+                """UPDATE users
+                   SET role = %s
+                   WHERE id = %s
+                   RETURNING id, username, email, role;""",
+                (new_role, user_id),
+            )
+            row = cur.fetchone()
+            if not row:
+                return None
+            
+            # Agar tuple return hota hai toh dict me convert karein
+            if not isinstance(row, dict):
+                return {
+                    "id": row[0],
+                    "username": row[1],
+                    "email": row[2],
+                    "role": row[3]
+                }
+            return row
 
+# -------- Get all users  ---------
+def list_all_users() -> list[dict]:
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, username, email, role, created_at FROM users ORDER BY id DESC;")
+            rows = cur.fetchall()
+            
+            # Agar tuple return ho raha hai toh usko dict mein map karein
+            if rows and not isinstance(rows[0], dict):
+                return [
+                    {
+                        "id": r[0],
+                        "username": r[1],
+                        "email": r[2],
+                        "role": r[3],
+                        "created_at": r[4],
+                    }
+                    for r in rows
+                ]
+            return rows
 # ---------- Chat Messages ----------
 
 def add_message(session_id: int, role: str, content: str) -> dict:

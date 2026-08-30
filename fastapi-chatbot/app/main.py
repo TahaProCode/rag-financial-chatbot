@@ -1,54 +1,27 @@
 """
 FastAPI app.
 
-Run with:  uvicorn app.main:app --reload --port 8000
-Docs at:   http://localhost:8000/docs
-UI at:     http://localhost:8000/
+Run with:   uvicorn app.main:app --reload --port 8000
+Docs at:    http://localhost:8000/docs
+UI at:      http://localhost:8000/
 """
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.postgres import PostgresSaver
-from langgraph.store.postgres import PostgresStore #imp
+from langgraph.store.postgres import PostgresStore
+
 from .graph import chat_graph_builder
-from .import crud, schemas
+from . import crud, schemas
 from .database import DB_CONFIG, init_tables
 from .rag_service import load_rag_service
 from .ingest import run_ingestion
 from .auth_routes import router as auth_router
+from .schemas import RoleUpdatePayload
 from .dependencies import get_current_user
-from fastapi import Depends
-# async def lifespan(app: FastAPI):
-#     # Runs once when the server starts
-#     init_tables()
-#     load_rag_service()  # loads the embedding model - can take a few seconds
-#     yield
-#     # (nothing needed on shutdown)
-# async def lifespan(app: FastAPI):
-#     global chat_graph, _checkpointer_cm
-
-#     init_tables()
-#     load_rag_service()
-
-#     _checkpointer_cm = PostgresSaver.from_conn_string(
-#     f"postgresql://{DB_CONFIG['user']}:{DB_CONFIG['password']}"
-#     f"@{DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['dbname']}"
-# )
-#     checkpointer = _checkpointer_cm.__enter__()
-#     checkpointer.setup()
-    
-#     chat_graph = chat_graph_builder.compile(checkpointer=checkpointer)
-#     print("Chat graph loaded")
-#     yield
-
-#     _checkpointer_cm.__exit__(None, None, None)
-
-
-# Baqi saare imports same rahenge, bas PostgresStore import karein:
-  # <-- Import Long term store
 
 
 @asynccontextmanager
@@ -67,39 +40,73 @@ async def lifespan(app: FastAPI):
     checkpointer = _checkpointer_cm.__enter__()
     checkpointer.setup()
 
-    # 2. Permanent Memory Store (Long Term like Video)
+    # 2. Permanent Memory Store (Long Term)
     _store_cm = PostgresStore.from_conn_string(db_uri)
     store = _store_cm.__enter__()
-    store.setup() # Yeh database mein automatic `langgraph_store` tables bana dega
-    
-    # 3. Compile graph with BOTH Checkpointer AND Store and save to app.state
+    store.setup()
+
+    # 3. Compile graph with BOTH Checkpointer AND Store
     app.state.chat_graph = chat_graph_builder.compile(checkpointer=checkpointer, store=store)
     app.state.checkpointer_cm = _checkpointer_cm
     app.state.store_cm = _store_cm
-    app.state.chat_graph = chat_graph_builder.compile(checkpointer=checkpointer, store=store)
-    app.state.store = store  # <-- Yeh line add karein
+    app.state.store = store
     print("Chat graph with Long-Term Memory Store loaded successfully.")
     yield
 
     app.state.checkpointer_cm.__exit__(None, None, None)
     app.state.store_cm.__exit__(None, None, None)
 
+
 app = FastAPI(title="RAG Chatbot API", lifespan=lifespan)
+
+# Routers Include
 app.include_router(auth_router)
-# Allow the frontend (served from the same app, but also handy if you ever
-# split it out to its own dev server on a different port) to call the API.
+
+# 2. FIX: Admin router ko yahan include karein
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# ---------------------------------------------------------------------
+# Admin Routes
+# ---------------------------------------------------------------------
 
+@app.get("/api/admin/users")
+def get_all_users(current_user: dict = Depends(get_current_user)):
+    """Fetch all registered users for admin dashboard."""
+    # Security Check: Direct regular users ko block karo
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # DB se users list fetch karein
+    users = crud.list_all_users() # Ensure crud me list_all_users() function majood ho
+    return users
 
+@app.put("/api/admin/users/{user_id}/role")
+def change_user_role(
+    user_id: int, 
+    payload: RoleUpdatePayload, 
+    current_user: dict = Depends(get_current_user)
+):
+    # Security check: Sirf Admin role change kar sakta hai
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    # Prevent self-demotion (Optionally Admin apna role accidently badal kar user na kar le)
+    if current_user.get("id") == user_id and payload.role != "admin":
+        raise HTTPException(status_code=400, detail="You cannot revoke your own admin rights.")
+
+    updated_user = crud.update_user_role(user_id, payload.role)
+    if not updated_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return updated_user
 # ---------------------------------------------------------------------
 # Chat session CRUD
-
-
+# ---------------------------------------------------------------------
 
 @app.post("/api/chats", response_model=schemas.ChatSessionOut)
 def create_chat(payload: schemas.ChatSessionCreate, current_user: dict = Depends(get_current_user)):
@@ -193,11 +200,6 @@ def delete_chat(chat_id: int, current_user: dict = Depends(get_current_user)):
             chat_graph.store.delete(("user_profile",), "profile_data")
         except Exception as e:
             print(f"Store memory delete error: {e}")
-
-# def delete_message(message_id: int):
-#     deleted = crud.delete_message(message_id)
-#     if not deleted:
-#         raise HTTPException(status_code=404, detail="Message not found")
 
 
 # ---------------------------------------------------------------------

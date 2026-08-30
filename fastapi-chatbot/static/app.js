@@ -24,6 +24,8 @@ async function authFetch(url, options = {}) {
   if (res.status === 401) {
     localStorage.removeItem("user_email");
     localStorage.removeItem("username");
+    localStorage.removeItem("user_role");
+    localStorage.removeItem("lastChatId");
     window.location.href = "/static/login.html";
     throw new Error("Session expired, redirecting to login.");
   }
@@ -119,17 +121,25 @@ async function sendMessage(content) {
   if (!res.ok) throw new Error("Failed to send message");
   return res.json();
 }
+
 document.addEventListener("DOMContentLoaded", () => {
-  // LocalStorage se user email ya username fetch karein (jo login par save hua tha)
+  // LocalStorage se user email ya username fetch karein
   const userEmail = localStorage.getItem("user_email") || "User";
 
   const avatarElement = document.getElementById("userAvatar");
   if (avatarElement && userEmail) {
-    // Email/Name ka pehla character nikal kar uppercase karein (e.g. taha@gmail.com -> T)
     const initial = userEmail.charAt(0).toUpperCase();
     avatarElement.textContent = initial;
   }
+
+  // Check user role & display Admin Dashboard button if role is admin
+  const role = localStorage.getItem("user_role");
+  const adminBtn = document.getElementById("adminDashboardBtn");
+  if (role === "admin" && adminBtn) {
+    adminBtn.classList.remove("hidden");
+  }
 });
+
 // ---------- Rendering ----------
 
 const CHAT_ITEM_BASE =
@@ -287,13 +297,6 @@ function autoResize() {
 
 document.getElementById("newChatBtn").addEventListener("click", createChat);
 
-// ---------- Init ----------
-document.getElementById("logoutBtn")?.addEventListener("click", () => {
-  localStorage.removeItem("access_token");
-  localStorage.removeItem("user_email");
-  window.location.href = "/static/login.html";
-});
-
 // ---------- Account Dropdown + Modal ----------
 const userAvatar = document.getElementById("userAvatar");
 const userDropdown = document.getElementById("userDropdown");
@@ -370,6 +373,7 @@ saveAccountBtn.addEventListener("click", async () => {
   }
 });
 
+// Clean up local storage on Logout
 logoutBtn.addEventListener("click", async () => {
   try {
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
@@ -378,6 +382,8 @@ logoutBtn.addEventListener("click", async () => {
   }
   localStorage.removeItem("user_email");
   localStorage.removeItem("username");
+  localStorage.removeItem("user_role");
+  localStorage.removeItem("lastChatId");
   window.location.href = "/static/login.html";
 });
 

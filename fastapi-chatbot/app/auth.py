@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
-from fastapi import Request
+from fastapi import Request ,Depends ,HTTPException
 from jose import jwt, JWTError
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -49,3 +49,5 @@ def create_refresh_token(user_id: str, client_ip: str) -> str:
         "type": "refresh"
     }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+
