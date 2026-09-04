@@ -1,0 +1,26 @@
+2026-09-03 14:02:59,989 | DEBUG | rag_chatbot | Checkpointer (short-term memory) initialized
+2026-09-03 14:03:00,019 | DEBUG | rag_chatbot | Store (long-term memory) initialized
+2026-09-03 14:03:05,709 | INFO | rag_chatbot | Login attempt: email=tahaattique31@gmail.com
+2026-09-03 14:03:05,983 | INFO | rag_chatbot | Login successful: user_id=1
+2026-09-03 14:03:06,143 | INFO | rag_chatbot | Admin dashboard - user list requested by user_id=1
+2026-09-03 14:03:06,145 | DEBUG | rag_chatbot | Returned 4 users to admin_id=1
+2026-09-03 14:04:38,475 | INFO | rag_chatbot | Application shutdown complete
+2026-09-03 14:04:50,249 | DEBUG | rag_chatbot | Checkpointer (short-term memory) initialized
+2026-09-03 14:04:50,277 | DEBUG | rag_chatbot | Store (long-term memory) initialized
+2026-09-03 14:05:14,928 | INFO | rag_chatbot | Admin dashboard - user list requested by user_id=1
+2026-09-03 14:05:14,930 | DEBUG | rag_chatbot | Returned 4 users to admin_id=1
+2026-09-03 14:05:46,110 | INFO | rag_chatbot | Message received: chat_id=7, user_id=1
+2026-09-03 14:05:46,111 | DEBUG | rag_chatbot | Raw message content: What was Apple's revenue in Q1 2024
+2026-09-03 14:10:29,065 | INFO | rag_chatbot | Message processed successfully: chat_id=7
+2026-09-04 10:18:03,431 | DEBUG | rag_chatbot | Checkpointer (short-term memory) initialized
+2026-09-04 10:18:03,468 | DEBUG | rag_chatbot | Store (long-term memory) initialized
+2026-09-04 10:36:02,769 | INFO | rag_chatbot | Login attempt: email=tahaattique31@gmail.com
+2026-09-04 10:36:03,106 | INFO | rag_chatbot | Login successful: user_id=1
+2026-09-04 10:36:03,338 | INFO | rag_chatbot | Admin dashboard - user list requested by user_id=1
+2026-09-04 10:36:03,342 | DEBUG | rag_chatbot | Returned 4 users to admin_id=1
+2026-09-04 11:17:47,482 | INFO | rag_chatbot | Login attempt: email=tahaattique31@gmail.com
+2026-09-04 11:17:47,749 | INFO | rag_chatbot | Login successful: user_id=1
+2026-09-04 11:17:47,837 | INFO | rag_chatbot | Admin dashboard - user list requested by user_id=1
+2026-09-04 11:17:47,840 | DEBUG | rag_chatbot | Returned 4 users to admin_id=1
+2026-09-04 11:17:52,787 | INFO | rag_chatbot | Admin dashboard - user list requested by user_id=1
+2026-09-04 11:17:52,789 | DEBUG | rag_chatbot | Returned 4 users to admin_id=1
