@@ -5,6 +5,7 @@ Run with:   uvicorn app.main:app --reload --port 8000
 Docs at:    http://localhost:8000/docs
 UI at:      http://localhost:8000/
 """
+from .logging_config import logger  
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.staticfiles import StaticFiles
@@ -39,6 +40,7 @@ async def lifespan(app: FastAPI):
     _checkpointer_cm = PostgresSaver.from_conn_string(db_uri)
     checkpointer = _checkpointer_cm.__enter__()
     checkpointer.setup()
+    logger.debug("Checkpointer (short-term memory) initialized")
 
     # 2. Permanent Memory Store (Long Term)
     _store_cm = PostgresStore.from_conn_string(db_uri)
@@ -50,11 +52,12 @@ async def lifespan(app: FastAPI):
     app.state.checkpointer_cm = _checkpointer_cm
     app.state.store_cm = _store_cm
     app.state.store = store
-    print("Chat graph with Long-Term Memory Store loaded successfully.")
+    logger.debug("Store (long-term memory) initialized")
     yield
 
     app.state.checkpointer_cm.__exit__(None, None, None)
     app.state.store_cm.__exit__(None, None, None)
+    logger.info("Application shutdown complete")
 
 
 app = FastAPI(title="RAG Chatbot API", lifespan=lifespan)
@@ -79,7 +82,11 @@ app.add_middleware(
 @app.post("/api/chats", response_model=schemas.ChatSessionOut)
 def create_chat(payload: schemas.ChatSessionCreate, current_user: dict = Depends(get_current_user)):
     """Create a new chat session bound to current user."""
-    return crud.create_session(payload.title, user_id=current_user["id"])
+    logger.info(f"Chat session creation requested by user_id={current_user['id']}")
+    session = crud.create_session(payload.title, user_id=current_user["id"])
+    logger.info(f"Chat session created: chat_id={session['id']}")
+    return session
+    
 
 
 @app.get("/api/chats", response_model=list[schemas.ChatSessionOut])
@@ -120,12 +127,16 @@ def get_messages(chat_id: int, current_user: dict = Depends(get_current_user)):
 
 @app.post("/api/chats/{chat_id}/messages", response_model=schemas.SendMessageResponse)
 def send_message(chat_id: int, payload: schemas.SendMessageRequest, current_user: dict = Depends(get_current_user)):
+    logger.info(f"Message received: chat_id={chat_id}, user_id={current_user['id']}")
+    logger.debug(f"Raw message content: {payload.content}")  # developer-only, sirf debug file mein
     chat_graph = getattr(app.state, "chat_graph", None)
     if chat_graph is None:
+        logger.error(f"Chat graph not ready for chat_id={chat_id}")
         raise HTTPException(status_code=503, detail="Graph is initializing, please try again.")
 
     session = crud.get_session(chat_id, user_id=current_user["id"])
     if not session:
+        logger.warning(f"Chat not found: chat_id={chat_id}, user_id={current_user['id']}")
         raise HTTPException(status_code=404, detail="Chat not found")
 
     user_message = crud.add_message(chat_id, "user", payload.content)
@@ -135,15 +146,21 @@ def send_message(chat_id: int, payload: schemas.SendMessageRequest, current_user
         crud.update_session_title(chat_id, auto_title or "New chat", user_id=current_user["id"])
 
     config = {"configurable": {"thread_id": str(chat_id)}}
-    result = chat_graph.invoke(
-        {"messages": [HumanMessage(content=payload.content)], "top_k": payload.top_k},
-        config=config,
-    )
+    try:
+        result = chat_graph.invoke(
+            {"messages": [HumanMessage(content=payload.content)], "top_k": payload.top_k},
+            config=config,
+        )
+    except Exception as e:
+        logger.debug(f"Graph invocation failed for chat_id={chat_id}: {e}", exc_info=True)
+        logger.error(f"Failed to generate response for chat_id={chat_id}")
+        raise HTTPException(status_code=500, detail="Failed to generate response")
+    
     answer = result["messages"][-1].content
-
     assistant_message = crud.add_message(chat_id, "assistant", answer)
     crud.touch_session(chat_id)
 
+    logger.info(f"Message processed successfully: chat_id={chat_id}")
     return {"user_message": user_message, "assistant_message": assistant_message}
 
 
@@ -167,7 +184,9 @@ def delete_chat(chat_id: int, current_user: dict = Depends(get_current_user)):
             chat_graph.store.delete((f"user_profile_{chat_id}",), "profile_data")
             chat_graph.store.delete(("user_profile",), "profile_data")
         except Exception as e:
-            print(f"Store memory delete error: {e}")
+            logger.debug(f"Store memory delete error: {e}", exc_info=True)
+
+    logger.info(f"Chat deleted successfully: chat_id={chat_id}")
 
 
 # ---------------------------------------------------------------------
