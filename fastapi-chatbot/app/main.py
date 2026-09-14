@@ -12,8 +12,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.messages import HumanMessage
-from langgraph.checkpoint.postgres import PostgresSaver
-from langgraph.store.postgres import PostgresStore
+
+# FIXED IMPORTS: Async versions for async execution
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from langgraph.store.postgres.aio import AsyncPostgresStore
 
 from .graph import chat_graph_builder
 from . import crud, schemas
@@ -24,6 +26,8 @@ from .routers.auth_routes import router as auth_router
 from .routers.admin_routes import router as admin_router
 from .dependencies import get_current_user
 
+from dotenv import load_dotenv
+load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -36,27 +40,23 @@ async def lifespan(app: FastAPI):
         f"@{DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['dbname']}"
     )
 
-    # 1. Thread Memory (Short Term)
-    _checkpointer_cm = PostgresSaver.from_conn_string(db_uri)
-    checkpointer = _checkpointer_cm.__enter__()
-    checkpointer.setup()
-    logger.debug("Checkpointer (short-term memory) initialized")
+    # ASYNC CHECKPOINTER & STORE LIFESPAN FIX
+    async with AsyncPostgresSaver.from_conn_string(db_uri) as checkpointer, \
+               AsyncPostgresStore.from_conn_string(db_uri) as store:
+        
+        await checkpointer.setup()
+        logger.debug("Checkpointer (short-term memory) initialized in async mode")
 
-    # 2. Permanent Memory Store (Long Term)
-    _store_cm = PostgresStore.from_conn_string(db_uri)
-    store = _store_cm.__enter__()
-    store.setup()
+        await store.setup()
+        logger.debug("Store (long-term memory) initialized in async mode")
 
-    # 3. Compile graph with BOTH Checkpointer AND Store
-    app.state.chat_graph = chat_graph_builder.compile(checkpointer=checkpointer, store=store)
-    app.state.checkpointer_cm = _checkpointer_cm
-    app.state.store_cm = _store_cm
-    app.state.store = store
-    logger.debug("Store (long-term memory) initialized")
-    yield
+        # Compile graph with ASYNC Checkpointer AND Store
+        app.state.chat_graph = chat_graph_builder.compile(checkpointer=checkpointer, store=store)
+        app.state.checkpointer = checkpointer
+        app.state.store = store
 
-    app.state.checkpointer_cm.__exit__(None, None, None)
-    app.state.store_cm.__exit__(None, None, None)
+        yield
+
     logger.info("Application shutdown complete")
 
 
@@ -65,8 +65,6 @@ app = FastAPI(title="RAG Chatbot API", lifespan=lifespan)
 # Routers Include
 app.include_router(auth_router)
 app.include_router(admin_router)
-
-# 2. FIX: Admin router ko yahan include karein
 
 app.add_middleware(
     CORSMiddleware,
@@ -86,7 +84,6 @@ def create_chat(payload: schemas.ChatSessionCreate, current_user: dict = Depends
     session = crud.create_session(payload.title, user_id=current_user["id"])
     logger.info(f"Chat session created: chat_id={session['id']}")
     return session
-    
 
 
 @app.get("/api/chats", response_model=list[schemas.ChatSessionOut])
@@ -126,9 +123,10 @@ def get_messages(chat_id: int, current_user: dict = Depends(get_current_user)):
 
 
 @app.post("/api/chats/{chat_id}/messages", response_model=schemas.SendMessageResponse)
-def send_message(chat_id: int, payload: schemas.SendMessageRequest, current_user: dict = Depends(get_current_user)):
+async def send_message(chat_id: int, payload: schemas.SendMessageRequest, current_user: dict = Depends(get_current_user)):
     logger.info(f"Message received: chat_id={chat_id}, user_id={current_user['id']}")
-    logger.debug(f"Raw message content: {payload.content}")  # developer-only, sirf debug file mein
+    logger.debug(f"Raw message content: {payload.content}")
+    
     chat_graph = getattr(app.state, "chat_graph", None)
     if chat_graph is None:
         logger.error(f"Chat graph not ready for chat_id={chat_id}")
@@ -147,7 +145,7 @@ def send_message(chat_id: int, payload: schemas.SendMessageRequest, current_user
 
     config = {"configurable": {"thread_id": str(chat_id)}}
     try:
-        result = chat_graph.invoke(
+        result = await chat_graph.ainvoke(
             {"messages": [HumanMessage(content=payload.content)], "top_k": payload.top_k},
             config=config,
         )
@@ -165,7 +163,7 @@ def send_message(chat_id: int, payload: schemas.SendMessageRequest, current_user
 
 
 @app.delete("/api/chats/{chat_id}", status_code=204)
-def delete_chat(chat_id: int, current_user: dict = Depends(get_current_user)):
+async def delete_chat(chat_id: int, current_user: dict = Depends(get_current_user)):
     """Delete a chat session, its messages, and clear its memory."""
     deleted = crud.delete_session(chat_id, user_id=current_user["id"])
     if not deleted:
@@ -175,14 +173,14 @@ def delete_chat(chat_id: int, current_user: dict = Depends(get_current_user)):
     
     if chat_graph and getattr(chat_graph, "checkpointer", None):
         try:
-            chat_graph.checkpointer.delete_thread(str(chat_id))
+            await chat_graph.checkpointer.adelete_thread(str(chat_id))
         except Exception as e:
-            print(f"Checkpointer thread delete error: {e}")
+            logger.debug(f"Checkpointer thread delete error: {e}", exc_info=True)
 
     if chat_graph and getattr(chat_graph, "store", None):
         try:
-            chat_graph.store.delete((f"user_profile_{chat_id}",), "profile_data")
-            chat_graph.store.delete(("user_profile",), "profile_data")
+            await chat_graph.store.adelete((f"user_profile_{chat_id}",), "profile_data")
+            await chat_graph.store.adelete(("user_profile",), "profile_data")
         except Exception as e:
             logger.debug(f"Store memory delete error: {e}", exc_info=True)
 
@@ -190,7 +188,7 @@ def delete_chat(chat_id: int, current_user: dict = Depends(get_current_user)):
 
 
 # ---------------------------------------------------------------------
-# Frontend (basic ChatGPT-like UI)
+# Frontend
 # ---------------------------------------------------------------------
 
 app.mount("/static", StaticFiles(directory="static"), name="static")

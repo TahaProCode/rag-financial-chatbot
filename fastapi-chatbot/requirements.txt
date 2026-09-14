@@ -15,8 +15,9 @@ ollama
 langchain-community
 langchain-huggingface
 langchain-experimental
+langchain_ollama
 pymupdf
-
+psycopg-binary>=3.0.0
 passlib[bcrypt]
 bcrypt==4.0.1
 python-jose[cryptography]

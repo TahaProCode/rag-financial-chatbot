@@ -7,15 +7,12 @@ os.makedirs("logs", exist_ok=True)
 def setup_logging():
     logger = logging.getLogger("rag_chatbot")
 
-    # Agar already configured hai (reload ki wajah se) to dobara handlers na lagayein
     if logger.handlers:
         return logger
 
-    # 1. Environment variable se check karein (Default: DEBUG = False)
-    # Aap env mein DEBUG="true" ya LOG_LEVEL="DEBUG" rakh sakte hain
+    # Aap env mein DEBUG="true" ya LOG_LEVEL="DEBUG" 
     is_debug = os.getenv("DEBUG", "false").lower() in ("true", "1", "yes")
     
-    # Base level set karein
     logger.setLevel(logging.DEBUG if is_debug else logging.INFO)
 
     formatter = logging.Formatter(
@@ -35,7 +32,7 @@ def setup_logging():
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
 
-    # 4. Debug File Handler (Sirf tab attach hoga jab DEBUG mode True ho)
+    # 4. Debug File Handler
     if is_debug:
         debug_handler = logging.FileHandler("logs/debug.log")
         debug_handler.setLevel(logging.DEBUG)
@@ -44,5 +41,4 @@ def setup_logging():
 
     return logger
 
-# Har file mein isse import karke use karenge
 logger = setup_logging()
