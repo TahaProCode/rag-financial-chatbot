@@ -5,7 +5,7 @@ import requests
 from langchain_core.tools import tool
 from . import rag_service as rag_service_module
 from .rag_service import is_ambiguous_query, NOT_ENOUGH_INFO_REPLY
-
+from .eda_tool import pandas_eda_tool
 
 @tool
 def sec_filing_lookup(query: str) -> str:
@@ -80,4 +80,4 @@ def web_search(query: str) -> str:
         return f"Error performing web search: {str(e)}"
 
 
-TOOLS = [sec_filing_lookup, calculator, web_search]
+TOOLS = [sec_filing_lookup, calculator, web_search ,pandas_eda_tool]

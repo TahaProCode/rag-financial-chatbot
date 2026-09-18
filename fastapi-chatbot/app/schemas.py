@@ -4,7 +4,8 @@ FastAPI uses them to validate incoming data and to generate the
 interactive docs at /docs automatically.
 """
 from datetime import datetime
-from pydantic import BaseModel, Field, EmailStr
+from typing import Optional
+from pydantic import BaseModel, Field, EmailStr 
 
 class SignupRequest(BaseModel):
     username: str = Field(..., min_length=10)
@@ -50,6 +51,7 @@ class MessageOut(BaseModel):
     session_id: int
     role: str
     content: str
+    file_path: Optional[str] = None  # UPDATED: File path string tracking
     created_at: datetime
 
 class ChatSessionWithMessages(ChatSessionOut):
@@ -58,6 +60,7 @@ class ChatSessionWithMessages(ChatSessionOut):
 class SendMessageRequest(BaseModel):
     content: str = Field(..., min_length=1)
     top_k: int = Field(default=5, ge=1, le=20)
+    file_path: Optional[str] = None  # UPDATED: Uploaded file path pointer
 
 class SendMessageResponse(BaseModel):
     user_message: MessageOut

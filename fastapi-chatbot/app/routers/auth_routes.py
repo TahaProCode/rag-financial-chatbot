@@ -35,7 +35,7 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 # Single Router instance
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
-ACCESS_TOKEN_MAX_AGE = 15 * 60         # 15 mins
+ACCESS_TOKEN_MAX_AGE = 40 * 60         # 40 mins
 REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60  # 7 days
 
 
