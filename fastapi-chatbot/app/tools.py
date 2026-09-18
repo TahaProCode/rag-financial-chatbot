@@ -23,6 +23,9 @@ _OPS = {
     ast.Div: op.truediv, ast.Pow: op.pow, ast.USub: op.neg,
 }
 
+
+
+
 def _eval(node):
     if isinstance(node, ast.Constant):
         return node.value
