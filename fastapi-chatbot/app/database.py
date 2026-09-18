@@ -82,7 +82,11 @@ def init_tables():
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     """
+    # ADDED: File path tracking for EDA Excel attachments
 
+    alter_add_file_path = """
+    ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS file_path TEXT;
+    """
     create_index = """
     CREATE INDEX IF NOT EXISTS idx_chat_messages_session_id
     ON chat_messages(session_id);
@@ -101,5 +105,6 @@ def init_tables():
             cur.execute(create_sessions)        # 2. chat_sessions table
             cur.execute(add_user_id_column)     # 3. ab user_id column add karo (users table exist karti hai ab)
             cur.execute(create_messages)        # 4. chat_messages
+            cur.execute(alter_add_file_path)
             cur.execute(create_index)           # 5. index
     print("users, chat_sessions, and chat_messages tables ready.")

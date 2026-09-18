@@ -189,19 +189,38 @@
       >
         <div class="max-w-3xl w-full mx-auto">
           <!-- JS Hook: composer -->
+          <div
+            id="filePreviewContainer"
+            class="hidden mb-2 flex items-center gap-2 bg-[#2d2f31] p-2 rounded-lg w-fit border border-[#37393b]"
+          >
+            <span class="material-icons-outlined text-sm text-[#4285f4]"
+              >insert_drive_file</span
+            >
+            <span
+              id="filePreviewName"
+              class="text-xs text-[#e3e3e3] max-w-[200px] truncate"
+              >filename.xlsx</span
+            >
+            <button
+              type="button"
+              id="removeFileBtn"
+              class="hover:text-red-400 text-[#9e9e9e] cursor-pointer ml-2"
+            >
+              <span class="material-icons-outlined text-sm">close</span>
+            </button>
+          </div>
+
           <form
             id="composer"
             class="bg-[#1e1f20] rounded-3xl p-4 flex flex-col gap-3 focus-within:bg-[#282a2c] border border-transparent focus-within:border-[#37393b] transition-all shadow-xl"
           >
-            <!-- JS Hook: messageInput -->
             <textarea
               id="messageInput"
               rows="1"
-              placeholder="Enter a prompt here"
+              placeholder="Ask about your data..."
               class="w-full bg-transparent text-[#e3e3e3] placeholder-[#808385] outline-none resize-none text-base px-2 min-h-[24px] max-h-[200px] leading-relaxed"
             ></textarea>
 
-            <!-- Action Toolbar Tray -->
             <div class="flex items-center justify-between select-none">
               <div class="flex items-center gap-1">
                 <button
@@ -218,17 +237,23 @@
                 >
                   <span class="material-icons-outlined text-xl">mic</span>
                 </button>
+
+                <!-- UPDATED: Attach File Button and Hidden Input -->
                 <button
                   type="button"
+                  id="attachFileBtn"
                   class="p-2 hover:bg-[#2d2f31] rounded-full text-[#c4c7c5] cursor-pointer"
                 >
-                  <span class="material-symbols-outlined">
-                    attach_file_add
-                  </span>
+                  <span class="material-symbols-outlined">attach_file_add</span>
                 </button>
+                <input
+                  type="file"
+                  id="fileInput"
+                  class="hidden"
+                  accept=".xlsx, .xls, .csv"
+                />
               </div>
 
-              <!-- JS Hook: sendBtn -->
               <button
                 id="sendBtn"
                 type="submit"

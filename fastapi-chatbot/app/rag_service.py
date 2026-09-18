@@ -12,7 +12,7 @@ from sentence_transformers import SentenceTransformer
 import ollama
 from .database import get_conn
 
-OLLAMA_MODEL = "qwen3:4b"
+OLLAMA_MODEL = "qwen2.5:7b"
 LOCAL_MODEL_PATH = "./local_models/all-MiniLM-L6-v2"
 
 # Below this similarity score, retrieved chunks are considered irrelevant
@@ -51,16 +51,12 @@ def generate_small_talk_reply(query: str, user_profile: dict = None, model: str 
     user_profile = user_profile or {}
     
     name = user_profile.get("name", "User")
-    role = user_profile.get("role", "Engineer")
-    location = user_profile.get("location", "Lahore")
 
     system_prompt = f"""You are a friendly assistant embedded in a financial SEC-filings chatbot.
 Reply briefly and warmly to greetings or small talk.
 
 Known facts about the user:
 - Name: {name}
-- Role: {role}
-- Location: {location}
 
 Always use these updated facts when answering questions about the user's name or role."""
 

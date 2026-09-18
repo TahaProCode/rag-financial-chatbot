@@ -5,14 +5,18 @@ Run with:   uvicorn app.main:app --reload --port 8000
 Docs at:    http://localhost:8000/docs
 UI at:      http://localhost:8000/
 """
-from .logging_config import logger  
+import os
+import shutil
+import uuid
+from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, File, UploadFile, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.messages import HumanMessage
 
+from .logging_config import logger  
 # FIXED IMPORTS: Async versions for async execution
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.store.postgres.aio import AsyncPostgresStore
@@ -28,6 +32,11 @@ from .dependencies import get_current_user
 
 from dotenv import load_dotenv
 load_dotenv()
+
+# Upload Directory Path
+UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+ALLOWED_EXTENSIONS = {".xlsx", ".xls", ".csv"}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -112,7 +121,7 @@ def rename_chat(chat_id: int, payload: schemas.ChatSessionUpdate, current_user: 
 
 
 # ---------------------------------------------------------------------
-# Messages
+# Messages & Upload File Integration
 # ---------------------------------------------------------------------
 
 @app.get("/api/chats/{chat_id}/messages", response_model=list[schemas.MessageOut])
@@ -123,9 +132,15 @@ def get_messages(chat_id: int, current_user: dict = Depends(get_current_user)):
 
 
 @app.post("/api/chats/{chat_id}/messages", response_model=schemas.SendMessageResponse)
-async def send_message(chat_id: int, payload: schemas.SendMessageRequest, current_user: dict = Depends(get_current_user)):
+async def send_message(
+    chat_id: int,
+    content: str = Form(...),
+    top_k: int = Form(5),
+    file: UploadFile = File(None),
+    current_user: dict = Depends(get_current_user)
+):
     logger.info(f"Message received: chat_id={chat_id}, user_id={current_user['id']}")
-    logger.debug(f"Raw message content: {payload.content}")
+    logger.debug(f"Raw message content: {content}")
     
     chat_graph = getattr(app.state, "chat_graph", None)
     if chat_graph is None:
@@ -137,18 +152,53 @@ async def send_message(chat_id: int, payload: schemas.SendMessageRequest, curren
         logger.warning(f"Chat not found: chat_id={chat_id}, user_id={current_user['id']}")
         raise HTTPException(status_code=404, detail="Chat not found")
 
-    user_message = crud.add_message(chat_id, "user", payload.content)
+    saved_file_path = None
+    if file:
+        file_ext = Path(file.filename).suffix.lower()
+        if file_ext not in ALLOWED_EXTENSIONS:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Unsupported file format '{file_ext}'. Allowed formats: {', '.join(ALLOWED_EXTENSIONS)}"
+            )
+
+        # Unique filename setup (e.g. 550e8400-e29b-41d4-a716-446655440000_report.xlsx)
+        unique_filename = f"{uuid.uuid4()}_{file.filename}"
+        saved_file_path = str(UPLOAD_DIR / unique_filename)
+
+        try:
+            with open(saved_file_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+            logger.info(f"File uploaded & saved to: {saved_file_path}")
+        except Exception as e:
+            logger.error(f"Failed to save file: {e}")
+            raise HTTPException(status_code=500, detail="Could not save file on server.")
+        finally:
+            await file.close()
+
+    # Database mein message add karna (file_path parameter optional/supported agar crud schema me update ho)
+    user_message = crud.add_message(
+        session_id=chat_id,
+        role="user",
+        content=content,
+        file_path=saved_file_path
+)
 
     if session["title"] == "New chat":
-        auto_title = payload.content.strip()[:60]
+        auto_title = content.strip()[:60]
         crud.update_session_title(chat_id, auto_title or "New chat", user_id=current_user["id"])
 
     config = {"configurable": {"thread_id": str(chat_id)}}
     try:
+        # LangChain Message construct (Prompt ke sath metadata ya file path pass ho sakta hai)
+        graph_input_content = content
         result = await chat_graph.ainvoke(
-            {"messages": [HumanMessage(content=payload.content)], "top_k": payload.top_k},
-            config=config,
-        )
+       {
+        "messages": [HumanMessage(content=graph_input_content)],
+        "top_k": top_k,
+        "file_path": saved_file_path
+       },
+       config=config,
+)
     except Exception as e:
         logger.debug(f"Graph invocation failed for chat_id={chat_id}: {e}", exc_info=True)
         logger.error(f"Failed to generate response for chat_id={chat_id}")
@@ -188,11 +238,11 @@ async def delete_chat(chat_id: int, current_user: dict = Depends(get_current_use
 
 
 # ---------------------------------------------------------------------
-# Frontend
+# Frontend & Static Files Setup
 # ---------------------------------------------------------------------
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 @app.get("/")
 def serve_ui():

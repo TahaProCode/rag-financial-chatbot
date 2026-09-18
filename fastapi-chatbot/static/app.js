@@ -1,5 +1,4 @@
 // --- AUTH GUARD: redirect to login if no token ---
-// Guard: httpOnly cookie ko JS check nahi kar sakti, is liye backend
 async function checkAuthOrRedirect() {
   try {
     const res = await fetch("/api/auth/me", { credentials: "include" });
@@ -14,18 +13,14 @@ async function checkAuthOrRedirect() {
   }
 }
 
-// --- Helper: fetch wrapper that always attaches the auth token ---
 async function authFetch(url, options = {}) {
   const res = await fetch(url, {
     ...options,
-    credentials: "include", // cookie automatically attach hoti hai isse
+    credentials: "include",
   });
 
   if (res.status === 401) {
-    localStorage.removeItem("user_email");
-    localStorage.removeItem("username");
-    localStorage.removeItem("user_role");
-    localStorage.removeItem("lastChatId");
+    localStorage.clear();
     window.location.href = "/static/login.html";
     throw new Error("Session expired, redirecting to login.");
   }
@@ -36,6 +31,7 @@ const API = "/api";
 let currentChatId = null;
 let chats = [];
 
+// DOM Elements
 const chatListEl = document.getElementById("chatList");
 const messagesEl = document.getElementById("messages");
 const emptyStateEl = document.getElementById("emptyState");
@@ -43,6 +39,15 @@ const chatTitleEl = document.getElementById("chatTitle");
 const composerEl = document.getElementById("composer");
 const inputEl = document.getElementById("messageInput");
 const sendBtn = document.getElementById("sendBtn");
+
+// ADDED: File Upload DOM Elements
+const attachFileBtn = document.getElementById("attachFileBtn");
+const fileInput = document.getElementById("fileInput");
+const filePreviewContainer = document.getElementById("filePreviewContainer");
+const filePreviewName = document.getElementById("filePreviewName");
+const removeFileBtn = document.getElementById("removeFileBtn");
+
+let currentFile = null; // Store selected file
 
 // ---------- API calls ----------
 
@@ -68,6 +73,7 @@ async function openChat(chatId) {
   currentChatId = chatId;
   localStorage.setItem("lastChatId", chatId);
   renderChatList();
+  clearFileSelection(); // Clear pending file if switching chats
   try {
     const res = await authFetch(`${API}/chats/${chatId}`);
     const chat = await res.json();
@@ -78,6 +84,7 @@ async function openChat(chatId) {
   }
 }
 
+// UPDATED: Render message to show attachment chip if present
 function renderMessages(messages) {
   messagesEl.innerHTML = "";
   if (!messages.length) {
@@ -85,7 +92,13 @@ function renderMessages(messages) {
     return;
   }
   for (const msg of messages) {
-    const messageRowObj = buildMessageRow(msg.role, msg.content);
+    // Pass file_path if it exists in history
+    const messageRowObj = buildMessageRow(
+      msg.role,
+      msg.content,
+      false,
+      msg.file_path,
+    );
     messagesEl.appendChild(messageRowObj.row);
   }
   scrollToBottom();
@@ -112,33 +125,61 @@ async function deleteChat(chatId) {
   await fetchChats();
 }
 
-async function sendMessage(content) {
+// UPDATED: Send message as FormData if file exists, else JSON
+async function sendMessage(content, file) {
+  const formData = new FormData();
+  formData.append("content", content);
+  formData.append("top_k", 5);
+
+  // Agar file select hui ho tabhi append karein
+  if (file) {
+    formData.append("file", file);
+  }
+
+  // Hamesha FormData hi bhejein (Content-Type header set mat karein)
   const res = await authFetch(`${API}/chats/${currentChatId}/messages`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content, top_k: 5 }),
+    body: formData,
   });
+
   if (!res.ok) throw new Error("Failed to send message");
   return res.json();
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  // LocalStorage se user email ya username fetch karein
   const userEmail = localStorage.getItem("user_email") || "User";
-
   const avatarElement = document.getElementById("userAvatar");
   if (avatarElement && userEmail) {
-    const initial = userEmail.charAt(0).toUpperCase();
-    avatarElement.textContent = initial;
+    avatarElement.textContent = userEmail.charAt(0).toUpperCase();
   }
-
-  // Check user role & display Admin Dashboard button if role is admin
   const role = localStorage.getItem("user_role");
   const adminBtn = document.getElementById("adminDashboardBtn");
   if (role === "admin" && adminBtn) {
     adminBtn.classList.remove("hidden");
   }
 });
+
+// ---------- File Handling UI Logic ----------
+
+attachFileBtn.addEventListener("click", () => {
+  fileInput.click();
+});
+
+fileInput.addEventListener("change", (e) => {
+  if (e.target.files && e.target.files.length > 0) {
+    currentFile = e.target.files[0];
+    filePreviewName.textContent = currentFile.name;
+    filePreviewContainer.classList.remove("hidden");
+  }
+});
+
+removeFileBtn.addEventListener("click", clearFileSelection);
+
+function clearFileSelection() {
+  currentFile = null;
+  fileInput.value = "";
+  filePreviewContainer.classList.add("hidden");
+}
 
 // ---------- Rendering ----------
 
@@ -167,7 +208,6 @@ function renderChatList() {
     const renameBtn = document.createElement("button");
     renameBtn.className = CHAT_ITEM_ACTION_BTN;
     renameBtn.textContent = "✎";
-    renameBtn.title = "Rename";
     renameBtn.onclick = async (e) => {
       e.stopPropagation();
       const newTitle = prompt("Rename chat:", chat.title);
@@ -178,7 +218,6 @@ function renderChatList() {
     const deleteBtn = document.createElement("button");
     deleteBtn.className = CHAT_ITEM_ACTION_BTN;
     deleteBtn.textContent = "🗑";
-    deleteBtn.title = "Delete";
     deleteBtn.onclick = async (e) => {
       e.stopPropagation();
       if (confirm(`Delete "${chat.title}"?`)) await deleteChat(chat.id);
@@ -194,15 +233,15 @@ const AVATAR_BASE =
   "w-8 h-8 rounded-[9px] flex-shrink-0 flex items-center justify-center text-[12.5px] font-bold font-mono";
 const AVATAR_USER = "bg-creamdim text-navy border border-borderline";
 const AVATAR_ASSISTANT = "bg-navy text-gold";
-
 const CONTENT_BASE =
-  "flex-1 leading-relaxed text-[15px] whitespace-pre-wrap break-words pt-1 text-ink";
+  "flex-1 leading-relaxed text-[15px] whitespace-pre-wrap break-words pt-1 text-ink flex flex-col gap-2";
 const CONTENT_USER_BUBBLE =
   "bg-navy text-cream rounded-tl-[4px] rounded-tr-2xl rounded-br-2xl rounded-bl-2xl px-4.5 py-3 shadow-sm";
 const CONTENT_ASSISTANT_RULE = "border-l-[3px] border-gold pl-4";
 const CONTENT_LOADING = "italic text-inksoft animate-pulse";
 
-function buildMessageRow(role, content, isLoading = false) {
+// UPDATED: buildMessageRow now accepts filePath to render an attachment chip
+function buildMessageRow(role, content, isLoading = false, filePath = null) {
   const row = document.createElement("div");
   row.className = "py-5 border-b border-borderline animate-message-in";
 
@@ -213,21 +252,33 @@ function buildMessageRow(role, content, isLoading = false) {
   avatar.className = `${AVATAR_BASE} ${role === "user" ? AVATAR_USER : AVATAR_ASSISTANT}`;
   avatar.textContent = role === "user" ? "U" : "A";
 
-  const contentEl = document.createElement("div");
+  const contentContainer = document.createElement("div");
   const roleClass =
     role === "user" ? CONTENT_USER_BUBBLE : CONTENT_ASSISTANT_RULE;
-  contentEl.className =
+  contentContainer.className =
     `${CONTENT_BASE} ${roleClass}` + (isLoading ? ` ${CONTENT_LOADING}` : "");
 
-  if (role === "user") {
-    contentEl.textContent = content;
-  } else {
-    contentEl.innerHTML = marked.parse(content || "");
+  // Add File Attachment Chip if it exists
+  if (filePath) {
+    const fileName = filePath.split("/").pop().split("\\").pop(); // extract filename
+    const fileChip = document.createElement("div");
+    fileChip.className =
+      "flex items-center gap-1.5 bg-[#2d2f31] border border-[#37393b] rounded text-xs px-2 py-1 w-fit mt-1";
+    fileChip.innerHTML = `<span class="material-icons-outlined text-[14px] text-[#4285f4]">insert_drive_file</span><span class="truncate max-w-[200px]">${fileName}</span>`;
+    contentContainer.appendChild(fileChip);
   }
 
-  inner.append(avatar, contentEl);
+  const textEl = document.createElement("div");
+  if (role === "user") {
+    textEl.textContent = content;
+  } else {
+    textEl.innerHTML = marked.parse(content || "");
+  }
+  contentContainer.appendChild(textEl);
+
+  inner.append(avatar, contentContainer);
   row.appendChild(inner);
-  return { row, contentEl };
+  return { row, contentEl: textEl }; // return textEl for updating loading state
 }
 
 function scrollToBottom() {
@@ -236,37 +287,53 @@ function scrollToBottom() {
 
 // ---------- Composer ----------
 
+// UPDATED: Submit handler passes currentFile
 composerEl.addEventListener("submit", async (e) => {
   e.preventDefault();
   const content = inputEl.value.trim();
-  if (!content) return;
+  if (!content && !currentFile) return; // Allow empty text if file is attached
 
   if (!currentChatId) {
     await createChat();
   }
 
+  const fileToSend = currentFile; // Store reference before clearing UI
+  const textToSend = content || "Attached a file for analysis."; // Fallback text
+
   inputEl.value = "";
   autoResize();
+  clearFileSelection(); // Clear UI immediately after submitting
   sendBtn.disabled = true;
 
   if (messagesEl.contains(emptyStateEl)) messagesEl.innerHTML = "";
 
-  const { row: userRow } = buildMessageRow("user", content);
+  // Render user message with mock file path just for UI display
+  const tempFilePath = fileToSend ? fileToSend.name : null;
+  const { row: userRow } = buildMessageRow(
+    "user",
+    textToSend,
+    false,
+    tempFilePath,
+  );
   messagesEl.appendChild(userRow);
   scrollToBottom();
 
   const { row: loadingRow, contentEl: loadingContentEl } = buildMessageRow(
     "assistant",
-    "Thinking...",
+    "Analyzing...",
     true,
   );
   messagesEl.appendChild(loadingRow);
   scrollToBottom();
 
   try {
-    const result = await sendMessage(content);
-    loadingContentEl.textContent = result.assistant_message.content;
-    loadingContentEl.classList.remove(...CONTENT_LOADING.split(" "));
+    const result = await sendMessage(textToSend, fileToSend);
+    loadingContentEl.innerHTML = marked.parse(
+      result.assistant_message.content || "",
+    );
+    loadingContentEl.parentElement.classList.remove(
+      ...CONTENT_LOADING.split(" "),
+    );
     await fetchChats();
     if (currentChatId) {
       const chat = chats.find((c) => c.id === currentChatId);
@@ -275,7 +342,9 @@ composerEl.addEventListener("submit", async (e) => {
   } catch (err) {
     loadingContentEl.textContent =
       "Something went wrong reaching the assistant.";
-    loadingContentEl.classList.remove(...CONTENT_LOADING.split(" "));
+    loadingContentEl.parentElement.classList.remove(
+      ...CONTENT_LOADING.split(" "),
+    );
     console.error(err);
   } finally {
     sendBtn.disabled = false;
@@ -308,20 +377,18 @@ const accountEmail = document.getElementById("accountEmail");
 const accountError = document.getElementById("accountError");
 const accountSuccess = document.getElementById("accountSuccess");
 const saveAccountBtn = document.getElementById("saveAccountBtn");
-const logoutBtn = document.getElementById("logoutBtn");
+const logoutBtn = document.getElementById("logoutBtn"); // Main sidebar logout
+const sidebarLogoutBtn = document.getElementById("sidebarLogoutBtn"); // Dropdown logout
 
-// Toggle dropdown on avatar click
 userAvatar.addEventListener("click", (e) => {
   e.stopPropagation();
   userDropdown.classList.toggle("hidden");
 });
 
-// Close dropdown when clicking anywhere else
 document.addEventListener("click", () => {
   userDropdown.classList.add("hidden");
 });
 
-// Open account modal with fresh data from backend
 accountBtn.addEventListener("click", async () => {
   userDropdown.classList.add("hidden");
   accountError.classList.add("hidden");
@@ -357,9 +424,7 @@ saveAccountBtn.addEventListener("click", async () => {
     });
     const data = await res.json();
 
-    if (!res.ok) {
-      throw new Error(data.detail || "Update failed.");
-    }
+    if (!res.ok) throw new Error(data.detail || "Update failed.");
 
     localStorage.setItem("username", data.username);
     localStorage.setItem("user_email", data.email);
@@ -373,31 +438,29 @@ saveAccountBtn.addEventListener("click", async () => {
   }
 });
 
-// Clean up local storage on Logout
-logoutBtn.addEventListener("click", async () => {
+async function handleLogout() {
   try {
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
   } catch (e) {
     console.error("Logout request failed", e);
   }
-  localStorage.removeItem("user_email");
-  localStorage.removeItem("username");
-  localStorage.removeItem("user_role");
-  localStorage.removeItem("lastChatId");
+  localStorage.clear();
   window.location.href = "/static/login.html";
-});
+}
 
-// Sets the avatar letter from the stored username (first letter, uppercase)
+logoutBtn.addEventListener("click", handleLogout);
+if (sidebarLogoutBtn) sidebarLogoutBtn.addEventListener("click", handleLogout);
+
 function updateAvatarLetter() {
   const username = localStorage.getItem("username");
-  userAvatar.textContent = username ? username[0].toUpperCase() : "U";
+  if (userAvatar && username)
+    userAvatar.textContent = username[0].toUpperCase();
 }
 updateAvatarLetter();
 
-// Fixed Init Execution
 (async function init() {
   const isAuthed = await checkAuthOrRedirect();
-  if (!isAuthed) return; // Immediate halt if unauthenticated
+  if (!isAuthed) return;
 
   await fetchChats();
   const savedChatId = localStorage.getItem("lastChatId");
