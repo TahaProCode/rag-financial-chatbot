@@ -5,6 +5,7 @@ from langgraph.prebuilt import ToolNode, tools_condition
 from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_ollama import ChatOllama
+import re
 import pandas as pd
 from .rag_service import is_small_talk, OLLAMA_MODEL, generate_small_talk_reply
 from .tools import TOOLS
@@ -42,6 +43,9 @@ CRITICAL RULES:
    tool call. Never fabricate tool output.
 3. Never invent file paths, column names, or results — only use what the tool
    actually returns.
+4. Never narrate your plan before acting ("Let's calculate...", "I will use the 
+   following steps..."). The moment you know a tool is needed, call it immediately 
+   in the same turn — don't describe it first.
 """
 
 def route_after_check(state: ChatState) -> str:
@@ -71,10 +75,24 @@ def _contains_raw_code(text: str) -> bool:
     ke bajaye seedha text me likha gaya hai."""
     return "```python" in text or "```" in text and "import pandas" in text
 
+_STALL_PHRASES = [
+    "let's proceed", "let's calculate", "i will use the following",
+    "i will proceed", "let's compute", "we will now", "i'll calculate",
+    "let's proceed with the calculation", "let me calculate",
+]
+
+def _is_stalling(text: str) -> bool:
+    """Detect karta hai jab model sirf 'plan' bata raha ho, actual result nahi de raha."""
+    if not text:
+        return False
+    lowered = text.lower()
+    has_stall_phrase = any(p in lowered for p in _STALL_PHRASES)
+    has_number = bool(re.search(r"\d", text))  # agar koi number mila to matlab result mil chuka
+    return has_stall_phrase and not has_number
+MAX_RETRIES = 2
 
 async def agent_node(state: ChatState, config: RunnableConfig = None) -> dict:
     system_prompt = AGENT_SYSTEM_PROMPT
-
     file_path = state.get("file_path")
     if file_path:
         preview = _get_file_columns(file_path)
@@ -87,15 +105,22 @@ async def agent_node(state: ChatState, config: RunnableConfig = None) -> dict:
     messages = [SystemMessage(content=system_prompt)] + state["messages"]
     response = await llm_with_tools.ainvoke(messages)
 
-    if not response.tool_calls and response.content and _contains_raw_code(response.content):
+    retries = 0
+    while (
+        not response.tool_calls
+        and response.content
+        and (_contains_raw_code(response.content) or _is_stalling(response.content))
+        and retries < MAX_RETRIES
+    ):
         correction_prompt = (
-            "You wrote raw Python code in your text response instead of calling "
-            "the pandas_eda_tool function. You MUST call pandas_eda_tool with that "
-            "exact code as the 'code' argument, and the file path as 'file_path'. "
-            "Do not write code as plain text — call the tool now."
+            "You just described a plan instead of executing it. Do NOT write "
+            "sentences like 'Let's calculate' or 'I will use the following steps'. "
+            "Call the appropriate tool RIGHT NOW with real arguments. "
+            "Respond with ONLY the tool call — no narration, no plan, no explanation."
         )
         retry_messages = messages + [response, SystemMessage(content=correction_prompt)]
         response = await llm_with_tools.ainvoke(retry_messages)
+        retries += 1
 
     return {"messages": [response]}
 
