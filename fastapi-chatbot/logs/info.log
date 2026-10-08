@@ -161,3 +161,59 @@
 2026-09-14 19:05:57,059 | INFO | rag_chatbot | Login successful: user_id=10
 2026-09-14 19:28:04,403 | INFO | rag_chatbot | Login attempt: email=waleed12@gmail.com
 2026-09-14 19:28:04,647 | INFO | rag_chatbot | Login successful: user_id=10
+2026-09-21 12:27:54,762 | INFO | rag_chatbot | Login attempt: email=waleed12@gmail.com
+2026-09-21 12:27:55,037 | INFO | rag_chatbot | Login successful: user_id=10
+2026-09-21 12:27:59,362 | INFO | rag_chatbot | Chat deleted successfully: chat_id=57
+2026-09-21 12:28:05,259 | INFO | rag_chatbot | Chat session creation requested by user_id=10
+2026-09-21 12:28:05,303 | INFO | rag_chatbot | Chat session created: chat_id=58
+2026-09-21 12:28:21,134 | INFO | rag_chatbot | Message received: chat_id=58, user_id=10
+2026-09-21 12:28:21,383 | INFO | rag_chatbot | File uploaded & saved to: uploads/9ea86551-6fc4-4f74-85df-048d62e92d1d_hotel_bookings.csv
+2026-09-21 12:29:42,403 | INFO | rag_chatbot | Message processed successfully: chat_id=58
+2026-09-21 12:30:19,634 | INFO | rag_chatbot | Message received: chat_id=58, user_id=10
+2026-09-21 12:31:28,417 | INFO | rag_chatbot | Message processed successfully: chat_id=58
+2026-09-21 18:32:24,914 | INFO | rag_chatbot | Login attempt: email=waleed12@gmail.com
+2026-09-21 18:32:25,186 | INFO | rag_chatbot | Login successful: user_id=10
+2026-09-21 19:14:32,083 | INFO | rag_chatbot | Login attempt: email=waleed12@gmail.com
+2026-09-21 19:14:32,360 | INFO | rag_chatbot | Login successful: user_id=10
+2026-10-06 19:17:56,970 | INFO | rag_chatbot | Login attempt: email=waleed12@gmail.com
+2026-10-06 19:17:57,300 | INFO | rag_chatbot | Login successful: user_id=10
+2026-10-06 19:18:00,877 | INFO | rag_chatbot | User logged out
+2026-10-06 19:18:03,642 | INFO | rag_chatbot | Login attempt: email=tahaattique31@gmail.com
+2026-10-06 19:18:03,902 | INFO | rag_chatbot | Login successful: user_id=1
+2026-10-06 19:18:04,195 | INFO | rag_chatbot | Admin dashboard - user list requested by user_id=1
+2026-10-06 19:18:05,787 | INFO | rag_chatbot | Admin dashboard - user list requested by user_id=1
+2026-10-06 19:19:28,469 | INFO | rag_chatbot | Chat session creation requested by user_id=1
+2026-10-06 19:19:28,546 | INFO | rag_chatbot | Chat session created: chat_id=59
+2026-10-06 19:20:00,410 | INFO | rag_chatbot | Message received: chat_id=59, user_id=1
+2026-10-06 19:20:07,523 | INFO | rag_chatbot | Admin dashboard - user list requested by user_id=1
+2026-10-06 19:20:16,874 | INFO | rag_chatbot | Message received: chat_id=59, user_id=1
+2026-10-06 19:21:15,754 | INFO | rag_chatbot | Message processed successfully: chat_id=59
+2026-10-06 19:21:34,696 | INFO | rag_chatbot | Message processed successfully: chat_id=59
+2026-10-07 13:16:06,873 | INFO | rag_chatbot | Login attempt: email=tahaattique31@gmail.com
+2026-10-07 13:16:07,156 | INFO | rag_chatbot | Login successful: user_id=1
+2026-10-07 13:16:07,318 | INFO | rag_chatbot | Admin dashboard - user list requested by user_id=1
+2026-10-07 13:16:13,521 | INFO | rag_chatbot | Chat session creation requested by user_id=1
+2026-10-07 13:16:13,532 | INFO | rag_chatbot | Chat session created: chat_id=60
+2026-10-07 13:16:34,407 | INFO | rag_chatbot | Message received: chat_id=60, user_id=1
+2026-10-07 13:16:34,415 | INFO | rag_chatbot | File uploaded & saved to: uploads/380cf1f6-d014-4762-91fb-6fbc316bb516_ESD.xlsx
+2026-10-07 13:16:34,821 | ERROR | rag_chatbot | Failed to generate response for chat_id=60
+2026-10-07 13:16:46,748 | INFO | rag_chatbot | Chat deleted successfully: chat_id=60
+2026-10-07 13:16:47,947 | INFO | rag_chatbot | Chat session creation requested by user_id=1
+2026-10-07 13:16:47,967 | INFO | rag_chatbot | Chat session created: chat_id=61
+2026-10-07 13:17:01,485 | INFO | rag_chatbot | Message received: chat_id=61, user_id=1
+2026-10-07 13:17:01,492 | INFO | rag_chatbot | File uploaded & saved to: uploads/ec17b2b0-8172-4b03-ab35-24f0e8b02a03_ESD.xlsx
+2026-10-07 13:17:48,753 | INFO | rag_chatbot | Message processed successfully: chat_id=61
+2026-10-07 13:29:27,138 | INFO | rag_chatbot | Message received: chat_id=61, user_id=1
+2026-10-07 13:29:27,364 | INFO | rag_chatbot | File uploaded & saved to: uploads/abfc59e7-cdd9-4c32-b4e2-cb6aeff9d82c_hotel_bookings.csv
+2026-10-07 13:30:47,007 | INFO | rag_chatbot | Message processed successfully: chat_id=61
+2026-10-07 13:55:49,680 | INFO | rag_chatbot | Application shutdown complete
+2026-10-07 17:40:05,585 | INFO | rag_chatbot | Login attempt: email=tahaattique31@gmail.com
+2026-10-07 17:40:05,882 | INFO | rag_chatbot | Login successful: user_id=1
+2026-10-07 17:40:06,081 | INFO | rag_chatbot | Admin dashboard - user list requested by user_id=1
+2026-10-07 17:57:27,345 | INFO | rag_chatbot | Login attempt: email=tahaattique31@gmail.com
+2026-10-07 17:57:27,611 | INFO | rag_chatbot | Login successful: user_id=1
+2026-10-07 17:57:27,722 | INFO | rag_chatbot | Admin dashboard - user list requested by user_id=1
+2026-10-07 18:03:03,404 | INFO | rag_chatbot | Application shutdown complete
+2026-10-08 13:24:12,105 | INFO | rag_chatbot | Login attempt: email=tahaattique31@gmail.com
+2026-10-08 13:24:12,388 | INFO | rag_chatbot | Login successful: user_id=1
+2026-10-08 13:24:12,894 | INFO | rag_chatbot | Admin dashboard - user list requested by user_id=1

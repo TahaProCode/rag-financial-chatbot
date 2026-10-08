@@ -8,18 +8,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 1. Pehle CPU-only PyTorch setup karein taake 3GB NVIDIA CUDA packages download na hon
+# 1. Pehle CPU-only PyTorch setup karein
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 
-# 2. Dependencies pehle install karein
+# 2. Dependencies install karein
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 3. Model save script pehle copy karke chalaayein (HTML/JS badalne par model dobara save nahi hoga)
-COPY app/save_model.py app/save_model.py
-RUN python app/save_model.py
-
-# 4. Baaki saara app code aakhir mein copy karein
+# 3. Code aur Local Model copy karein
 COPY . .
 
 EXPOSE 8000

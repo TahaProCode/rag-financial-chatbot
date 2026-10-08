@@ -83,4 +83,4 @@ def web_search(query: str) -> str:
         return f"Error performing web search: {str(e)}"
 
 
-TOOLS = [sec_filing_lookup, calculator, web_search ,eda_analysis_tool]
+TOOLS = [sec_filing_lookup, calculator, web_search, eda_analysis_tool]
