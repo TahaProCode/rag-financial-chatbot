@@ -217,3 +217,33 @@
 2026-10-08 13:24:12,105 | INFO | rag_chatbot | Login attempt: email=tahaattique31@gmail.com
 2026-10-08 13:24:12,388 | INFO | rag_chatbot | Login successful: user_id=1
 2026-10-08 13:24:12,894 | INFO | rag_chatbot | Admin dashboard - user list requested by user_id=1
+2026-10-08 13:29:00,520 | INFO | rag_chatbot | Application shutdown complete
+2026-10-08 13:29:36,032 | INFO | rag_chatbot | Chat deleted successfully: chat_id=61
+2026-10-08 13:29:37,332 | INFO | rag_chatbot | Chat session creation requested by user_id=1
+2026-10-08 13:29:37,346 | INFO | rag_chatbot | Chat session created: chat_id=62
+2026-10-08 13:29:54,569 | INFO | rag_chatbot | Message received: chat_id=62, user_id=1
+2026-10-08 13:29:54,807 | INFO | rag_chatbot | File uploaded & saved to: uploads/5891ffd5-fff8-454a-9df5-bcc759a30dad_hotel_bookings.csv
+2026-10-08 13:31:13,779 | INFO | rag_chatbot | Message processed successfully: chat_id=62
+2026-10-08 13:32:04,197 | INFO | rag_chatbot | Message received: chat_id=62, user_id=1
+2026-10-08 13:32:14,780 | INFO | rag_chatbot | Message processed successfully: chat_id=62
+2026-10-08 13:32:59,628 | INFO | rag_chatbot | Message received: chat_id=62, user_id=1
+2026-10-08 13:33:06,314 | INFO | rag_chatbot | Message processed successfully: chat_id=62
+2026-10-08 13:34:00,884 | INFO | rag_chatbot | Chat deleted successfully: chat_id=62
+2026-10-08 13:34:04,792 | INFO | rag_chatbot | Chat deleted successfully: chat_id=47
+2026-10-08 13:34:35,989 | INFO | rag_chatbot | Admin dashboard - user list requested by user_id=1
+2026-10-08 16:32:02,950 | INFO | rag_chatbot | Login attempt: email=tahaattique31@gmail.com
+2026-10-08 16:32:03,227 | INFO | rag_chatbot | Login successful: user_id=1
+2026-10-08 16:32:03,446 | INFO | rag_chatbot | Admin dashboard - user list requested by user_id=1
+2026-10-08 16:32:06,222 | INFO | rag_chatbot | Admin dashboard - user list requested by user_id=1
+2026-10-08 16:35:11,851 | INFO | rag_chatbot | Message received: chat_id=7, user_id=1
+2026-10-08 16:35:12,518 | ERROR | rag_chatbot | Failed to generate response for chat_id=7
+2026-10-08 16:36:17,643 | INFO | rag_chatbot | Message received: chat_id=7, user_id=1
+2026-10-08 16:37:49,275 | INFO | rag_chatbot | Message processed successfully: chat_id=7
+2026-10-08 16:38:08,552 | INFO | rag_chatbot | Chat session creation requested by user_id=1
+2026-10-08 16:38:08,561 | INFO | rag_chatbot | Chat session created: chat_id=63
+2026-10-08 16:38:11,534 | INFO | rag_chatbot | Message received: chat_id=63, user_id=1
+2026-10-08 16:38:19,132 | INFO | rag_chatbot | Message processed successfully: chat_id=63
+2026-10-08 16:40:24,642 | INFO | rag_chatbot | Message received: chat_id=63, user_id=1
+2026-10-08 16:40:32,602 | INFO | rag_chatbot | Message processed successfully: chat_id=63
+2026-10-08 16:41:30,839 | INFO | rag_chatbot | Message received: chat_id=63, user_id=1
+2026-10-08 16:41:40,088 | INFO | rag_chatbot | Message processed successfully: chat_id=63

@@ -635,3 +635,211 @@ During task with name 'agent' and id '4a0e7c7c-1cce-8a2d-4ee3-d45cc207bb95'
 2026-10-08 13:24:12,388 | INFO | rag_chatbot | Login successful: user_id=1
 2026-10-08 13:24:12,894 | INFO | rag_chatbot | Admin dashboard - user list requested by user_id=1
 2026-10-08 13:24:12,897 | DEBUG | rag_chatbot | Returned 4 users to admin_id=1
+2026-10-08 13:29:00,520 | INFO | rag_chatbot | Application shutdown complete
+2026-10-08 13:29:30,905 | DEBUG | rag_chatbot | Checkpointer (short-term memory) initialized in async mode
+2026-10-08 13:29:30,909 | DEBUG | rag_chatbot | Store (long-term memory) initialized in async mode
+2026-10-08 13:29:36,032 | INFO | rag_chatbot | Chat deleted successfully: chat_id=61
+2026-10-08 13:29:37,332 | INFO | rag_chatbot | Chat session creation requested by user_id=1
+2026-10-08 13:29:37,346 | INFO | rag_chatbot | Chat session created: chat_id=62
+2026-10-08 13:29:54,569 | INFO | rag_chatbot | Message received: chat_id=62, user_id=1
+2026-10-08 13:29:54,570 | DEBUG | rag_chatbot | Raw message content: Analyze this file and give me the output
+2026-10-08 13:29:54,807 | INFO | rag_chatbot | File uploaded & saved to: uploads/5891ffd5-fff8-454a-9df5-bcc759a30dad_hotel_bookings.csv
+2026-10-08 13:31:13,779 | INFO | rag_chatbot | Message processed successfully: chat_id=62
+2026-10-08 13:32:04,197 | INFO | rag_chatbot | Message received: chat_id=62, user_id=1
+2026-10-08 13:32:04,198 | DEBUG | rag_chatbot | Raw message content: What is the cancellation rate of bookings
+2026-10-08 13:32:14,780 | INFO | rag_chatbot | Message processed successfully: chat_id=62
+2026-10-08 13:32:59,628 | INFO | rag_chatbot | Message received: chat_id=62, user_id=1
+2026-10-08 13:32:59,629 | DEBUG | rag_chatbot | Raw message content: Who is the current US president
+2026-10-08 13:33:06,314 | INFO | rag_chatbot | Message processed successfully: chat_id=62
+2026-10-08 13:34:00,884 | INFO | rag_chatbot | Chat deleted successfully: chat_id=62
+2026-10-08 13:34:04,792 | INFO | rag_chatbot | Chat deleted successfully: chat_id=47
+2026-10-08 13:34:35,989 | INFO | rag_chatbot | Admin dashboard - user list requested by user_id=1
+2026-10-08 13:34:35,992 | DEBUG | rag_chatbot | Returned 4 users to admin_id=1
+2026-10-08 16:29:51,689 | DEBUG | rag_chatbot | Checkpointer (short-term memory) initialized in async mode
+2026-10-08 16:29:51,702 | DEBUG | rag_chatbot | Store (long-term memory) initialized in async mode
+2026-10-08 16:32:02,950 | INFO | rag_chatbot | Login attempt: email=tahaattique31@gmail.com
+2026-10-08 16:32:03,227 | INFO | rag_chatbot | Login successful: user_id=1
+2026-10-08 16:32:03,446 | INFO | rag_chatbot | Admin dashboard - user list requested by user_id=1
+2026-10-08 16:32:03,448 | DEBUG | rag_chatbot | Returned 4 users to admin_id=1
+2026-10-08 16:32:06,222 | INFO | rag_chatbot | Admin dashboard - user list requested by user_id=1
+2026-10-08 16:32:06,224 | DEBUG | rag_chatbot | Returned 4 users to admin_id=1
+2026-10-08 16:35:11,851 | INFO | rag_chatbot | Message received: chat_id=7, user_id=1
+2026-10-08 16:35:11,852 | DEBUG | rag_chatbot | Raw message content: What was Apple's revenue in Q1 2024
+2026-10-08 16:35:12,324 | DEBUG | rag_chatbot | Graph invocation failed for chat_id=7: All connection attempts failed
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.13/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "/usr/local/lib/python3.13/site-packages/httpx/_transports/default.py", line 394, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/httpcore/_async/connection_pool.py", line 256, in handle_async_request
+    raise exc from None
+  File "/usr/local/lib/python3.13/site-packages/httpcore/_async/connection_pool.py", line 236, in handle_async_request
+    response = await connection.handle_async_request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        pool_request.request
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/usr/local/lib/python3.13/site-packages/httpcore/_async/connection.py", line 101, in handle_async_request
+    raise exc
+  File "/usr/local/lib/python3.13/site-packages/httpcore/_async/connection.py", line 78, in handle_async_request
+    stream = await self._connect(request)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/httpcore/_async/connection.py", line 124, in _connect
+    stream = await self._network_backend.connect_tcp(**kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/httpcore/_backends/auto.py", line 31, in connect_tcp
+    return await self._backend.connect_tcp(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+    )
+    ^
+  File "/usr/local/lib/python3.13/site-packages/httpcore/_backends/anyio.py", line 113, in connect_tcp
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "/usr/local/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/httpcore/_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ConnectError: All connection attempts failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/app/app/main.py", line 194, in send_message
+            result = await chat_graph.ainvoke(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "/usr/local/lib/python3.13/site-packages/langgraph/pregel/main.py", line 4155, in ainvoke
+    async for chunk in self.astream(
+    ...<30 lines>...
+            chunks.append(chunk)
+  File "/usr/local/lib/python3.13/site-packages/langgraph/pregel/main.py", line 3505, in astream
+    async for _ in runner.atick(
+    ...<16 lines>...
+            yield o
+  File "/usr/local/lib/python3.13/site-packages/langgraph/pregel/_runner.py", line 397, in atick
+    await arun_with_retry(
+    ...<15 lines>...
+    )
+  File "/usr/local/lib/python3.13/site-packages/langgraph/pregel/_retry.py", line 744, in arun_with_retry
+    return await task.proc.ainvoke(task.input, config)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/langgraph/_internal/_runnable.py", line 756, in ainvoke
+    input = await asyncio.create_task(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+        step.ainvoke(input, config, **kwargs), context=context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/usr/local/lib/python3.13/site-packages/langgraph/_internal/_runnable.py", line 522, in ainvoke
+    ret = await self.afunc(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/graph.py", line 146, in agent_node
+    response = await llm_with_tools.ainvoke(messages)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/langchain_core/runnables/base.py", line 6028, in ainvoke
+    return await self.bound.ainvoke(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "/usr/local/lib/python3.13/site-packages/langchain_core/language_models/chat_models.py", line 511, in ainvoke
+    llm_result = await self.agenerate_prompt(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<8 lines>...
+    )
+    ^
+  File "/usr/local/lib/python3.13/site-packages/langchain_core/language_models/chat_models.py", line 1888, in agenerate_prompt
+    return await self.agenerate(
+           ^^^^^^^^^^^^^^^^^^^^^
+        prompt_messages, stop=stop, callbacks=callbacks, **kwargs
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/usr/local/lib/python3.13/site-packages/langchain_core/language_models/chat_models.py", line 1846, in agenerate
+    raise exceptions[0]
+  File "/usr/local/lib/python3.13/site-packages/langchain_core/language_models/chat_models.py", line 2179, in _agenerate_with_cache
+    result = await self._agenerate(
+             ^^^^^^^^^^^^^^^^^^^^^^
+        messages, stop=stop, run_manager=run_manager, **kwargs
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/usr/local/lib/python3.13/site-packages/langchain_ollama/chat_models.py", line 1388, in _agenerate
+    final_chunk = await self._achat_stream_with_aggregation(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        messages, stop, run_manager, verbose=self.verbose, **kwargs
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/usr/local/lib/python3.13/site-packages/langchain_ollama/chat_models.py", line 1161, in _achat_stream_with_aggregation
+    async for chunk in self._aiterate_over_stream(messages, stop, **kwargs):
+    ...<9 lines>...
+            )
+  File "/usr/local/lib/python3.13/site-packages/langchain_ollama/chat_models.py", line 1306, in _aiterate_over_stream
+    async for stream_resp in self._acreate_chat_stream(messages, stop, **kwargs):
+    ...<57 lines>...
+            yield chunk
+  File "/usr/local/lib/python3.13/site-packages/langchain_ollama/chat_models.py", line 1102, in _acreate_chat_stream
+    async for part in await self._async_client.chat(**chat_params):
+        yield part
+  File "/usr/local/lib/python3.13/site-packages/ollama/_client.py", line 804, in inner
+    async with self._client.stream(*args, **kwargs) as r:
+               ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/httpx/_client.py", line 1583, in stream
+    response = await self.send(
+               ^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "/usr/local/lib/python3.13/site-packages/httpx/_client.py", line 1629, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "/usr/local/lib/python3.13/site-packages/httpx/_client.py", line 1657, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "/usr/local/lib/python3.13/site-packages/httpx/_client.py", line 1694, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/httpx/_client.py", line 1730, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/httpx/_transports/default.py", line 393, in handle_async_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/usr/local/lib/python3.13/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ConnectError: All connection attempts failed
+During task with name 'agent' and id '362a2504-bb58-5d81-ebee-601c055a5fa2'
+2026-10-08 16:35:12,518 | ERROR | rag_chatbot | Failed to generate response for chat_id=7
+2026-10-08 16:36:17,643 | INFO | rag_chatbot | Message received: chat_id=7, user_id=1
+2026-10-08 16:36:17,645 | DEBUG | rag_chatbot | Raw message content: What was Apple's revenue in Q1 2024
+2026-10-08 16:37:49,275 | INFO | rag_chatbot | Message processed successfully: chat_id=7
+2026-10-08 16:38:08,552 | INFO | rag_chatbot | Chat session creation requested by user_id=1
+2026-10-08 16:38:08,561 | INFO | rag_chatbot | Chat session created: chat_id=63
+2026-10-08 16:38:11,534 | INFO | rag_chatbot | Message received: chat_id=63, user_id=1
+2026-10-08 16:38:11,536 | DEBUG | rag_chatbot | Raw message content: What was Apple's revenue in Q1 2024
+2026-10-08 16:38:19,132 | INFO | rag_chatbot | Message processed successfully: chat_id=63
+2026-10-08 16:40:24,642 | INFO | rag_chatbot | Message received: chat_id=63, user_id=1
+2026-10-08 16:40:24,643 | DEBUG | rag_chatbot | Raw message content: What is Interest Rate Risk
+2026-10-08 16:40:32,602 | INFO | rag_chatbot | Message processed successfully: chat_id=63
+2026-10-08 16:41:30,839 | INFO | rag_chatbot | Message received: chat_id=63, user_id=1
+2026-10-08 16:41:30,841 | DEBUG | rag_chatbot | Raw message content: im talking about Interest Rate Risk in Amazon sec filling
+2026-10-08 16:41:40,088 | INFO | rag_chatbot | Message processed successfully: chat_id=63
