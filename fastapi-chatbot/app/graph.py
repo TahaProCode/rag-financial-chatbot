@@ -1,3 +1,4 @@
+# graph.py
 from typing import TypedDict, Annotated, Optional
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
@@ -25,29 +26,18 @@ AGENT_SYSTEM_PROMPT = """You are an intelligent AI Assistant with access to tool
 - sec_filing_lookup: for SEC filing / company financial questions.
 - calculator: for arithmetic on numbers you already have.
 - web_search: for current events, news, or anything not in SEC filings.
-- pandas_eda_tool: for running Python pandas analysis on CSV/Excel files.
+- eda_analysis_tool: for inspecting, analyzing, and answering questions about attached Excel/CSV files.
 
 IMPORTANT: 
-1. You do not have built-in knowledge of current events. For ANY question about 
-   recent news or current events, call web_search first.
-2. If an attached file path is provided in context or state, use pandas_eda_tool 
-   to inspect and analyze the file. Always assume the dataset is loaded as DataFrame df. 
-   First check columns (df.columns) or inspect sample rows (df.head()) before answering 
-   data-specific questions.
+1. You do not have built-in knowledge of current events. For ANY question about recent news or current events, call web_search first.
+2. If an attached file path is provided in context or state, use `eda_analysis_tool` to inspect and analyze the file.
 
 CRITICAL RULES:
-1. Never write raw Python code directly in your response text. Always call
-   pandas_eda_tool to run code — never narrate or simulate running it yourself.
-2. Never write phrases like "Execution Error:", "Execution Result:", or
-   "let's execute this code" unless that exact text came back from the actual
-   tool call. Never fabricate tool output.
-3. Never invent file paths, column names, or results — only use what the tool
-   actually returns.
-4. Never narrate your plan before acting ("Let's calculate...", "I will use the 
-   following steps..."). The moment you know a tool is needed, call it immediately 
-   in the same turn — don't describe it first.
+1. Never write raw Python code directly in your response text. Always call `eda_analysis_tool` to analyze attached files.
+2. Never write phrases like "Execution Error:", "Execution Result:", or "let's execute this code" unless that exact text came back from the tool call. Never fabricate tool output.
+3. Never invent file paths, column names, or results — only use what the tool actually returns.
+4. Call the required tool immediately in your first turn. Do not output plans like "I will calculate..." or "Let's proceed...".
 """
-
 def route_after_check(state: ChatState) -> str:
     last_user_msg = state["messages"][-1].content
     if is_small_talk(last_user_msg):
@@ -98,8 +88,8 @@ async def agent_node(state: ChatState, config: RunnableConfig = None) -> dict:
         preview = _get_file_columns(file_path)
         system_prompt += (
             f"\n\nCURRENT ATTACHED FILE PATH: {file_path}\n"
-            f"When calling pandas_eda_tool, pass file_path='{file_path}' in tool arguments.\n"
-            f"DATASET PREVIEW (use these EXACT column names, do not guess):\n{preview}"
+            f"When an attached file is present, call `eda_analysis_tool` with file_path='{file_path}'.\n"
+            f"DATASET PREVIEW:\n{preview}"
         )
 
     messages = [SystemMessage(content=system_prompt)] + state["messages"]
@@ -113,10 +103,8 @@ async def agent_node(state: ChatState, config: RunnableConfig = None) -> dict:
         and retries < MAX_RETRIES
     ):
         correction_prompt = (
-            "You just described a plan instead of executing it. Do NOT write "
-            "sentences like 'Let's calculate' or 'I will use the following steps'. "
-            "Call the appropriate tool RIGHT NOW with real arguments. "
-            "Respond with ONLY the tool call — no narration, no plan, no explanation."
+            f"You output text instead of invoking a tool.\n"
+            f"Call `eda_analysis_tool(file_path='{file_path}')` RIGHT NOW without any introductory text."
         )
         retry_messages = messages + [response, SystemMessage(content=correction_prompt)]
         response = await llm_with_tools.ainvoke(retry_messages)

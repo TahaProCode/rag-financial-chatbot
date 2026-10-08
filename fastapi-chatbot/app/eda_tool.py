@@ -6,11 +6,6 @@ on an uploaded Excel/CSV file using pandas, with a local Ollama model
 (qwen2.5:7b) writing targeted follow-up analysis code and a short
 narrative summary.
 
-Drop this file next to your existing `tools.py`, then:
-
-    from .eda_tool import eda_analysis_tool
-    TOOLS = [..., eda_analysis_tool]
-
 and mention it in your AGENT_SYSTEM_PROMPT (see bottom of this file for
 the exact text to add).
 """
@@ -79,7 +74,6 @@ def _load_dataframe(file_path: str) -> pd.DataFrame:
     if df.empty:
         raise ValueError("The uploaded file loaded successfully but contains no rows.")
     return df
-
 
 # Step 2: Deterministic profiling (no LLM, always correct)
 
@@ -373,7 +367,7 @@ def eda_analysis_tool(file_path: str) -> str:
     try:
         df = _load_dataframe(file_path)
     except Exception as e:
-        return f"❌ Could not load the file for EDA: {e}"
+        return f"Could not load the file for EDA: {e}"
 
     profile = _build_profile(df)
 
@@ -386,21 +380,3 @@ def eda_analysis_tool(file_path: str) -> str:
     narrative = _generate_narrative(profile, extra.get("output", {}) if extra.get("success") else {})
 
     return _format_report(file_path, profile, extra, narrative)
-
-
-# ---------------------------------------------------------------------------
-# Integration notes (not executed — read this before wiring it up)
-# ---------------------------------------------------------------------------
-#
-# 1) tools.py:
-#       from .eda_tool import eda_analysis_tool
-#       TOOLS = [sec_filing_lookup, calculator, web_search, pandas_eda_tool, eda_analysis_tool]
-#
-# 2) graph.py — AGENT_SYSTEM_PROMPT, add a line distinguishing the two pandas tools:
-#       - pandas_eda_tool: for running a SPECIFIC pandas query/code the user described.
-#       - eda_analysis_tool: for a FULL automatic exploratory analysis of an
-#         uploaded file when the user asks to "analyze"/"explore"/"summarize" it.
-#
-# 3) Nothing else changes in your graph — ToolNode(TOOLS) + tools_condition
-#    will route to it automatically once the LLM decides to call it, exactly
-#    like your other tools.

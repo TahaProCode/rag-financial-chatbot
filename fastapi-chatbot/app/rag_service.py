@@ -1,3 +1,4 @@
+# rag_service.py
 """
 Thin wrapper around the RAG pipeline you already built (embeddings,
 Postgres/pgvector retrieval, Ollama generation). Loaded ONCE at app
@@ -14,7 +15,6 @@ from .database import get_conn
 
 OLLAMA_MODEL = "qwen2.5:7b"
 LOCAL_MODEL_PATH = "./local_models/all-MiniLM-L6-v2"
-
 # Below this similarity score, retrieved chunks are considered irrelevant
 SIMILARITY_THRESHOLD = 0.35
 
